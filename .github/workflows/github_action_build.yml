@@ -38,7 +38,7 @@ jobs:
           fi
 
           # Set RELEASE_VERSION_NAME to "<CURRENT_VERSION_NAME>+<last_commit_hash>"
-          CURRENT_VERSION_NAME_REGEX='^\s*versionName = "([^"]+)"$'
+          CURRENT_VERSION_NAME_REGEX='^\s*val defaultVersionName = "([^"]+)"$'
           CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle.kts | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
           if [ -z "$CURRENT_VERSION_NAME" ]; then
               exit_on_error "Failed to read versionName from ./app/build.gradle.kts."

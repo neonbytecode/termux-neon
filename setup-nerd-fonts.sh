@@ -9,7 +9,6 @@ getNerdFont() {
 	local font_filename_remote="$font_name"
 	if [ "$font_filename_remote" != "Go-Mono" ]; then
 	  font_filename_remote="${font_filename_remote//-/}"
-    echo "font_name=$font_name, font_filename_remote=$font_filename_remote"
 	fi
 	local url="https://github.com/ryanoasis/nerd-fonts/raw/${tag}/patched-fonts/${font_filename_remote}/${font_file}"
 

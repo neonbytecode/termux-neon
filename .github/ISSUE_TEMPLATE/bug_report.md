@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Create a report to help us improve Termux:Styling application
+about: Create a report to help us improve Termux Neon application
 
 ---
 
@@ -8,8 +8,8 @@ about: Create a report to help us improve Termux:Styling application
 IMPORTANT:
 
 1. Support of Android 5.x - 6.x is finished.
-2. Note that Termux:Styling does not perform Color or Font rendering.
-2. Fill the template AFTER comments.
+2. Note that Termux Neon does not perform Color or Font rendering.
+3. Fill the template AFTER comments.
 -->
 
 **Problem description**

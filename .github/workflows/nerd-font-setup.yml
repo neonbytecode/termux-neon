@@ -1,5 +1,4 @@
-name: Check Nerd Fonts 
-
+name: Check Nerd Fonts
 on:
   push:
     branches: [ master ]
