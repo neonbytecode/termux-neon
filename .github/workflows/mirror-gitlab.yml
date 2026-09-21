@@ -7,6 +7,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - "v*"
 
 jobs:
   mirror:
@@ -20,3 +22,4 @@ jobs:
       - name: Push to GitLab mirror
         run: |
           git push --force "https://oauth2:${{ secrets.GITLAB_MIRROR_TOKEN }}@gitlab.com/neonbytecode/termux-neon.git" HEAD:master
+          git push --force "https://oauth2:${{ secrets.GITLAB_MIRROR_TOKEN }}@gitlab.com/neonbytecode/termux-neon.git" --tags

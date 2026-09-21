@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-21
+
 This release marks the from-scratch rewrite of the app: a Jetpack Compose UI
 on top of a modular architecture, replacing the original View-based
 `termux-styling` app while keeping the exact same plugin contract
@@ -60,4 +62,5 @@ Versions prior to the Compose rewrite tracked the original `termux-styling`
 app closely. See the git history for details; notable tagged releases
 included `v0.31`, `v0.32.0`, and `v0.32.1`.
 
-[Unreleased]: https://github.com/neonbytecode/termux-neon/compare/v0.32.1...HEAD
+[Unreleased]: https://github.com/neonbytecode/termux-neon/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/neonbytecode/termux-neon/compare/v0.32.1...v1.0.0
