@@ -20,10 +20,6 @@ the exact same plugin contract — the `com.termux.styling` package and shared
 user ID — so it installs and runs exactly where the upstream add-on did.
 
 <div align="center">
-<img src="docs/assets/demo.gif" width="280"/>
-</div>
-
-<div align="center">
 <img src="docs/assets/1_preview.png" width="30%"/>
 <img src="docs/assets/2_applied.png" width="30%"/>
 <img src="docs/assets/3_textcolor.png" width="30%"/>
