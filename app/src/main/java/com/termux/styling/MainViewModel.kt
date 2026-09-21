@@ -143,38 +143,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         _ui.update { it.copy(busy = true, message = null) }
         viewModelScope.launch(Dispatchers.IO) {
-            val results = mutableListOf<Pair<String, Result<Unit>>>()
-
-            // Apply in sequence: scheme → font → text color
-            _ui.value.selectedScheme?.let { scheme ->
-                results += "scheme" to writer.apply(state, isColors = true, scheme.name)
-            }
-            _ui.value.selectedFont?.let { font ->
-                results += "font" to writer.apply(state, isColors = false, font.name)
-            }
-            _ui.value.textColorOverride?.let { argb ->
-                val hex = String.format("#%06X", argb and 0xFFFFFF)
-                results += "text_color" to writer.applyForegroundColor(state, hex)
-            }
-
+            val current = _ui.value
+            val hex = current.textColorOverride?.let { String.format("#%06X", it and 0xFFFFFF) }
+            val result = writer.applyAll(
+                state = state,
+                schemeName = current.selectedScheme?.name,
+                fontName = current.selectedFont?.name,
+                foregroundHex = hex,
+            )
             val applied = reader.read(state)
-            val allSuccess = results.all { it.second.isSuccess }
 
             _ui.update {
                 it.copy(
                     busy = false,
                     appliedScheme = applied.schemeName?.let { s -> Selectable(s) },
                     appliedFont = applied.fontName?.let { s -> Selectable(s) },
-                    message = if (allSuccess) {
+                    message = if (result.isSuccess) {
                         val appliedParts = buildList {
-                            if (_ui.value.selectedScheme != null) add("Scheme")
-                            if (_ui.value.selectedFont != null) add("Font")
-                            if (_ui.value.textColorOverride != null) add("Text Color")
+                            if (current.selectedScheme != null) add("Scheme")
+                            if (current.selectedFont != null) add("Font")
+                            if (current.textColorOverride != null) add("Text Color")
                         }.joinToString(" + ")
                         StatusNote.Success("All styles applied: $appliedParts")
                     } else {
-                        val failed = results.filter { it.second.isFailure }.map { it.first }
-                        StatusNote.Error("Failed: ${failed.joinToString(", ")}")
+                        StatusNote.Error("Nothing was changed: ${result.exceptionOrNull()?.message ?: "apply failed"}")
                     },
                 )
             }

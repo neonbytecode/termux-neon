@@ -20,6 +20,66 @@ class TermuxStyleWriter(
 ) {
 
     /**
+     * Applies all selected pieces as one filesystem transaction. The reload
+     * broadcast is sent only after every replacement succeeds; a failed
+     * replacement restores both files to their previous byte-for-byte state.
+     */
+    fun applyAll(
+        state: TermuxEnvironment.State,
+        schemeName: String?,
+        fontName: String?,
+        foregroundHex: String?,
+    ): Result<Unit> {
+        val termuxDir = state.termuxDir
+        if (state.termuxContext == null || termuxDir == null) {
+            return Result.failure(IllegalStateException("Termux is not accessible on this device."))
+        }
+
+        return runCatching {
+            if (!TermuxEnvironment.ensureTermuxDir(termuxDir)) {
+                throw IllegalStateException("Cannot create termux dir=${termuxDir.absolutePath}")
+            }
+
+            val colorsFile = File(termuxDir, TermuxEnvironment.COLORS_PROPERTIES).canonicalFile
+            val fontFile = File(termuxDir, TermuxEnvironment.FONT_FILE).canonicalFile
+            val previousColors = FileSnapshot.capture(colorsFile)
+            val previousFont = FileSnapshot.capture(fontFile)
+
+            try {
+                val colors = schemeName?.let {
+                    targetContent(
+                        isColors = true,
+                        defaultChoice = it.isEmpty() || it == Selectable.DEFAULT_FILENAME,
+                        assetName = it,
+                    )
+                } ?: existingOrDefault(colorsFile, isColors = true)
+                val colorsWithForeground = foregroundHex?.let {
+                    patchForegroundColor(String(colors, StandardCharsets.UTF_8), it)
+                        .toByteArray(StandardCharsets.UTF_8)
+                } ?: colors
+                val font = fontName?.let {
+                    targetContent(
+                        isColors = false,
+                        defaultChoice = it.isEmpty() || it == Selectable.DEFAULT_FILENAME,
+                        assetName = it,
+                    )
+                } ?: existingOrDefault(fontFile, isColors = false)
+
+                writeIfChanged(colorsFile, colorsWithForeground)
+                writeIfChanged(fontFile, font)
+            } catch (error: Exception) {
+                runCatching { previousColors.restore(colorsFile) }
+                    .exceptionOrNull()?.let(error::addSuppressed)
+                runCatching { previousFont.restore(fontFile) }
+                    .exceptionOrNull()?.let(error::addSuppressed)
+                throw error
+            }
+
+            TermuxEnvironment.requestStyleReload(context)
+        }
+    }
+
+    /**
      * Applies a bundled scheme or font.
      *
      * @param isColors true for a color scheme, false for a font.
@@ -30,6 +90,7 @@ class TermuxStyleWriter(
         if (state.termuxContext == null || termuxDir == null) {
             return Result.failure(IllegalStateException("Termux is not accessible on this device."))
         }
+
         val outputFile = if (isColors) TermuxEnvironment.COLORS_PROPERTIES else TermuxEnvironment.FONT_FILE
         val defaultChoice = bundleName.isNullOrEmpty() || bundleName == Selectable.DEFAULT_FILENAME
         // Only consulted when !defaultChoice; placeholder keeps the type non-null.
@@ -107,6 +168,32 @@ class TermuxStyleWriter(
             // Leaving an empty font file is the marker for Termux's default typeface.
             else -> ByteArray(0)
         }
+
+    private fun existingOrDefault(file: File, isColors: Boolean): ByteArray =
+        if (file.isFile) file.readBytes() else targetContent(
+            isColors = isColors,
+            defaultChoice = true,
+            assetName = Selectable.DEFAULT_FILENAME,
+        )
+}
+
+private data class FileSnapshot(
+    val existed: Boolean,
+    val bytes: ByteArray,
+) {
+    fun restore(destination: File) {
+        if (existed) {
+            destination.parentFile?.mkdirs()
+            destination.writeBytes(bytes)
+        } else {
+            destination.delete()
+        }
+    }
+
+    companion object {
+        fun capture(file: File): FileSnapshot =
+            FileSnapshot(file.isFile, if (file.isFile) file.readBytes() else ByteArray(0))
+    }
 }
 
 private val FOREGROUND_LINE = Regex("""(?i)^\s*foreground\s*[:=].*$""")
