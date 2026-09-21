@@ -1,7 +1,14 @@
-# Termux Neon
+<div align="center">
 
-[![Build status](https://github.com/neonbytecode/termux-neon/actions/workflows/github_action_build.yml/badge.svg)](https://github.com/neonbytecode/termux-neon/actions/workflows/github_action_build.yml)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+<img src="https://capsule-render.vercel.app/api?type=waving&height=180&color=0:0a0e18,100:161b29&text=Termux%20Neon&fontColor=4de8f0&fontSize=46&animation=fadeIn&fontAlignY=40&desc=Terminal%20theming%2C%20live%20preview%2C%20one%20tap%20apply&descAlignY=62&descColor=8b93a8&descSize=15" width="100%"/>
+
+<img src="https://readme-typing-svg.demolab.com/?font=Fira+Code&size=16&pause=1400&color=4DE8F0&center=true&vCenter=true&width=560&lines=15+curated+color+schemes;Live+preview+%2B+hot-reload;Apply+All+%E2%80%94+one+tap%2C+done." alt="Typing SVG" />
+
+[![Build status](https://img.shields.io/github/actions/workflow/status/neonbytecode/termux-neon/github_action_build.yml?style=for-the-badge&logo=githubactions&logoColor=black&label=build&color=4de8f0)](https://github.com/neonbytecode/termux-neon/actions/workflows/github_action_build.yml)
+[![License: GPLv3](https://img.shields.io/badge/license-GPLv3-ff4de0?style=for-the-badge)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/neonbytecode/termux-neon?style=for-the-badge&color=4dffa0&label=release)](https://github.com/neonbytecode/termux-neon/releases)
+
+</div>
 
 A [Termux](https://termux.org) add-on to customize the terminal's font and
 color theme, with a neon-styled Compose UI, live preview, and one-tap apply
@@ -11,6 +18,12 @@ This is a from-scratch Compose rewrite of Termux's official
 [termux-styling](https://github.com/termux/termux-styling) add-on. It keeps
 the exact same plugin contract — the `com.termux.styling` package and shared
 user ID — so it installs and runs exactly where the upstream add-on did.
+
+<div align="center">
+<img src="docs/assets/1_preview.png" width="30%"/>
+<img src="docs/assets/2_applied.png" width="30%"/>
+<img src="docs/assets/3_textcolor.png" width="30%"/>
+</div>
 
 ## Features
 
