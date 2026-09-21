@@ -133,90 +133,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         rebuildPreview()
     }
 
-    fun applyScheme() {
-        _ui.value.selectedScheme?.let { apply(colors = true, bundle = it.name) }
-    }
+    fun applyAll() {
+        val state = environment
+        if (!state.accessible) {
+            _ui.update {
+                it.copy(message = StatusNote.Error("Termux is not installed or not signed with the matching key."))
+            }
+            return
+        }
+        _ui.update { it.copy(busy = true, message = null) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val results = mutableListOf<Pair<String, Result<Unit>>>()
 
-    fun applyFont() {
-        _ui.value.selectedFont?.let { apply(colors = false, bundle = it.name) }
+            // Apply in sequence: scheme → font → text color
+            _ui.value.selectedScheme?.let { scheme ->
+                results += "scheme" to writer.apply(state, isColors = true, scheme.name)
+            }
+            _ui.value.selectedFont?.let { font ->
+                results += "font" to writer.apply(state, isColors = false, font.name)
+            }
+            _ui.value.textColorOverride?.let { argb ->
+                val hex = String.format("#%06X", argb and 0xFFFFFF)
+                results += "text_color" to writer.applyForegroundColor(state, hex)
+            }
+
+            val applied = reader.read(state)
+            val allSuccess = results.all { it.second.isSuccess }
+
+            _ui.update {
+                it.copy(
+                    busy = false,
+                    appliedScheme = applied.schemeName?.let { s -> Selectable(s) },
+                    appliedFont = applied.fontName?.let { s -> Selectable(s) },
+                    message = if (allSuccess) {
+                        val appliedParts = buildList {
+                            if (_ui.value.selectedScheme != null) add("Scheme")
+                            if (_ui.value.selectedFont != null) add("Font")
+                            if (_ui.value.textColorOverride != null) add("Text Color")
+                        }.joinToString(" + ")
+                        StatusNote.Success("All styles applied: $appliedParts")
+                    } else {
+                        val failed = results.filter { it.second.isFailure }.map { it.first }
+                        StatusNote.Error("Failed: ${failed.joinToString(", ")}")
+                    },
+                )
+            }
+            rebuildPreview()
+        }
     }
 
     fun clearMessage() {
         _ui.update { it.copy(message = null) }
     }
 
+    /** Tapping the already-selected swatch clears the override (toggle, not a separate reset action). */
     fun selectTextColor(argb: Int) {
-        _ui.update { it.copy(textColorOverride = argb) }
+        _ui.update { it.copy(textColorOverride = if (it.textColorOverride == argb) null else argb) }
         rebuildPreview()
-    }
-
-    /** Drops the picker override so the preview reflects whatever is actually applied again. */
-    fun resetTextColor() {
-        _ui.update { it.copy(textColorOverride = null) }
-        rebuildPreview()
-    }
-
-    fun applyTextColor() {
-        val state = environment
-        if (!state.accessible) {
-            _ui.update {
-                it.copy(message = StatusNote.Error("Termux is not installed or not signed with the matching key."))
-            }
-            return
-        }
-        val argb = _ui.value.textColorOverride ?: return
-        val hex = String.format("#%06X", argb and 0xFFFFFF)
-        _ui.update { it.copy(busy = true, message = null) }
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = writer.applyForegroundColor(state, hex)
-            val applied = reader.read(state)
-            _ui.update {
-                it.copy(
-                    busy = false,
-                    appliedScheme = applied.schemeName?.let { s -> Selectable(s) },
-                    appliedFont = applied.fontName?.let { s -> Selectable(s) },
-                    message = result.fold(
-                        onSuccess = { StatusNote.Success("Text color applied → $hex") },
-                        onFailure = { e -> StatusNote.Error("Failed to install: ${e.message ?: e::class.simpleName}") },
-                    ),
-                )
-            }
-            rebuildPreview()
-        }
-    }
-
-    private fun apply(colors: Boolean, bundle: String) {
-        val state = environment
-        if (!state.accessible) {
-            _ui.update {
-                it.copy(message = StatusNote.Error("Termux is not installed or not signed with the matching key."))
-            }
-            return
-        }
-        _ui.update { it.copy(busy = true, message = null) }
-        viewModelScope.launch(Dispatchers.IO) {
-            val result = writer.apply(state, colors, bundle)
-            val applied = reader.read(state)
-            _ui.update {
-                it.copy(
-                    busy = false,
-                    appliedScheme = applied.schemeName?.let { s -> Selectable(s) },
-                    appliedFont = applied.fontName?.let { s -> Selectable(s) },
-                    message = result.fold(
-                        onSuccess = {
-                            val label = Selectable(bundle).displayName
-                            StatusNote.Success(
-                                if (colors) "Scheme applied → $label" else "Font applied → $label",
-                            )
-                        },
-                        onFailure = { e ->
-                            StatusNote.Error("Failed to install: ${e.message ?: e::class.simpleName}")
-                        },
-                    ),
-                )
-            }
-            rebuildPreview()
-        }
     }
 
     private fun rebuildPreview() {

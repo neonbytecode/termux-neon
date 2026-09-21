@@ -2,7 +2,6 @@ package com.termux.styling
 
 import android.graphics.Typeface
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -44,6 +42,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -98,16 +97,13 @@ fun NeonScreen(viewModel: MainViewModel, onBack: () -> Unit = {}) {
         ui = ui,
         onSelectScheme = viewModel::selectScheme,
         onSelectFont = viewModel::selectFont,
-        onApplyScheme = viewModel::applyScheme,
-        onApplyFont = viewModel::applyFont,
         onQueryChange = viewModel::setQuery,
         onToggleFavoriteScheme = viewModel::toggleFavoriteScheme,
         onToggleFavoriteFont = viewModel::toggleFavoriteFont,
         onShuffle = viewModel::shuffle,
         onBack = onBack,
         onTextColorSelect = viewModel::selectTextColor,
-        onApplyTextColor = viewModel::applyTextColor,
-        onResetTextColor = viewModel::resetTextColor,
+        onApplyAll = viewModel::applyAll,
     )
 }
 
@@ -116,16 +112,13 @@ fun NeonStylingScreen(
     ui: UiState,
     onSelectScheme: (Selectable) -> Unit,
     onSelectFont: (Selectable) -> Unit,
-    onApplyScheme: () -> Unit,
-    onApplyFont: () -> Unit,
     onQueryChange: (String) -> Unit = {},
     onToggleFavoriteScheme: (String) -> Unit = {},
     onToggleFavoriteFont: (String) -> Unit = {},
     onShuffle: () -> Unit = {},
     onBack: () -> Unit = {},
     onTextColorSelect: (Int) -> Unit = {},
-    onApplyTextColor: () -> Unit = {},
-    onResetTextColor: () -> Unit = {},
+    onApplyAll: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -168,10 +161,7 @@ fun NeonStylingScreen(
 
         FloatingApplyDock(
             ui = ui,
-            onApplyScheme = onApplyScheme,
-            onApplyFont = onApplyFont,
-            onApplyTextColor = onApplyTextColor,
-            onResetTextColor = onResetTextColor,
+            onApplyAll = onApplyAll,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -510,34 +500,39 @@ private fun ColorDot(color: Int) {
 }
 
 /**
- * Pinned to the bottom of the screen (not the scroll content) so the primary
- * actions are always one tap away, regardless of how far the schemes/fonts
- * rows have been scrolled — no more hunting for an Apply button at the
- * bottom of a long page.
+ * Pinned to the bottom of the screen (not the scroll content) so the single
+ * primary action is always one tap away, regardless of how far the
+ * schemes/fonts rows have been scrolled. Deliberately borderless: a soft
+ * vertical scrim (transparent → bg) keeps the pill legible over content
+ * without drawing a hard panel edge — matches macOS's translucent bottom
+ * toolbar treatment rather than a boxed Android app bar.
  */
 @Composable
 private fun FloatingApplyDock(
     ui: UiState,
-    onApplyScheme: () -> Unit,
-    onApplyFont: () -> Unit,
-    onApplyTextColor: () -> Unit,
-    onResetTextColor: () -> Unit,
+    onApplyAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val hasPendingChanges = ui.selectedScheme != null || ui.selectedFont != null || ui.textColorOverride != null
+
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(NeonSurfaceHigh)
-            .border(
-                BorderStroke(1.dp, (if (ui.termuxReady) NeonCyan else NeonRed).copy(alpha = 0.35f)),
-                shape = RectangleShape,
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color.Transparent, NeonBg.copy(alpha = 0.85f), NeonBg),
+                ),
             )
             .safeDrawingPadding()
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (!ui.termuxReady) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
                     text = "TERMUX NOT FOUND",
                     style = MaterialTheme.typography.labelMedium,
@@ -548,6 +543,7 @@ private fun FloatingApplyDock(
                     text = "Install Termux and reinstall this add-on with the matching signature to apply styles.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                 )
             }
             return
@@ -557,47 +553,14 @@ private fun FloatingApplyDock(
             StatusMessage(ui.message!!)
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            NeonButton(
-                text = "APPLY SCHEME",
-                onClick = onApplyScheme,
-                modifier = Modifier.weight(1f),
-                enabled = ui.selectedScheme != null && !ui.busy,
-                loading = ui.busy,
-                accent = NeonCyan,
-            )
-            NeonButton(
-                text = "APPLY FONT",
-                onClick = onApplyFont,
-                modifier = Modifier.weight(1f),
-                enabled = ui.selectedFont != null && !ui.busy,
-                loading = ui.busy,
-                accent = NeonMagenta,
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            NeonButton(
-                text = "APPLY TEXT COLOR",
-                onClick = onApplyTextColor,
-                modifier = Modifier.weight(1f),
-                enabled = ui.textColorOverride != null && !ui.busy,
-                accent = NeonGreen,
-            )
-            NeonButton(
-                text = "RESET",
-                onClick = onResetTextColor,
-                enabled = ui.textColorOverride != null && !ui.busy,
-                accent = NeonRed,
-                filled = false,
-            )
-        }
+        NeonButton(
+            text = if (ui.busy) "APPLYING…" else "APPLY ALL CHANGES",
+            onClick = onApplyAll,
+            modifier = Modifier.fillMaxWidth(0.82f),
+            enabled = hasPendingChanges && !ui.busy,
+            loading = ui.busy,
+            accent = NeonCyan,
+        )
     }
 }
 
