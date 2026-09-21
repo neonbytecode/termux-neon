@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -181,6 +182,10 @@ private fun NeonHeader(termuxReady: Boolean, onBack: () -> Unit) {
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                 ) { onBack() }
+                .semantics {
+                    role = Role.Button
+                    contentDescription = "Back to Termux"
+                }
                 .padding(vertical = 6.dp),
         )
         Row(
@@ -222,6 +227,7 @@ private fun FilterBar(query: String, onQueryChange: (String) -> Unit, onShuffle:
             text = "⟲",
             onClick = onShuffle,
             accent = NeonMagenta,
+            contentDescription = "Shuffle scheme and font preview",
         )
     }
 }
@@ -317,7 +323,11 @@ private fun SchemeChip(
                 Spacer(modifier = Modifier.width(4.dp))
                 ColorDot(entry.palette.cursor)
                 Spacer(modifier = Modifier.weight(1f))
-                FavoriteStar(favorite = favorite, onToggle = onToggleFavorite)
+                FavoriteStar(
+                    favorite = favorite,
+                    onToggle = onToggleFavorite,
+                    itemName = entry.selectable.displayName,
+                )
             }
             Text(
                 text = entry.selectable.displayName,
@@ -398,7 +408,11 @@ private fun FontChip(
                     glowAlpha = 0.35f,
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                FavoriteStar(favorite = favorite, onToggle = onToggleFavorite)
+                FavoriteStar(
+                    favorite = favorite,
+                    onToggle = onToggleFavorite,
+                    itemName = entry.selectable.displayName,
+                )
             }
             Text(
                 text = entry.selectable.displayName,
@@ -486,6 +500,7 @@ private fun ColorSwatch(argb: Int, selected: Boolean, onClick: () -> Unit) {
             .semantics {
                 role = Role.Button
                 contentDescription = "#%06X".format(argb and 0xFFFFFF)
+                stateDescription = if (selected) "Selected" else "Not selected"
             },
     )
 }
@@ -566,6 +581,7 @@ private fun FloatingApplyDock(
         NeonButton(
             text = if (ui.busy) "APPLYING…" else "APPLY ALL CHANGES",
             onClick = onApplyAll,
+            contentDescription = if (ui.busy) "Applying all changes" else "Apply all selected changes",
             modifier = Modifier.fillMaxWidth(0.82f),
             enabled = hasPendingChanges && !ui.busy,
             loading = ui.busy,

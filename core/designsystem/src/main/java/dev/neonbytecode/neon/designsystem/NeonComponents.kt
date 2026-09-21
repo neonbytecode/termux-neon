@@ -41,6 +41,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -193,6 +194,7 @@ fun NeonButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    contentDescription: String? = null,
     enabled: Boolean = true,
     loading: Boolean = false,
     accent: Color = NeonCyan,
@@ -210,6 +212,10 @@ fun NeonButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier
+            .semantics {
+                if (contentDescription != null) this.contentDescription = contentDescription
+                if (loading) stateDescription = "In progress"
+            }
             .then(Modifier.inlineGlow(if (enabled) accent else Color.Transparent, intensity = if (enabled) 1f else 0f))
             .clip(shape),
         shape = shape,
@@ -296,7 +302,8 @@ fun NeonSearchField(
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .border(BorderStroke(1.dp, accent.copy(alpha = 0.4f)), shape)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .semantics { contentDescription = "Filter schemes and fonts" },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -346,6 +353,7 @@ fun FavoriteStar(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     accent: Color = NeonAmber,
+    itemName: String? = null,
 ) {
     Text(
         text = if (favorite) "★" else "☆",
@@ -358,7 +366,10 @@ fun FavoriteStar(
             ) { onToggle() }
             .semantics {
                 role = Role.Button
-                contentDescription = if (favorite) "Unfavorite" else "Favorite"
+                contentDescription = buildString {
+                    append(if (favorite) "Unfavorite" else "Favorite")
+                    itemName?.let { append(" $it") }
+                }
             },
     )
 }
