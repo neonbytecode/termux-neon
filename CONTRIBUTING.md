@@ -10,6 +10,12 @@ few days, and that's normal, not a sign your contribution isn't wanted.
 ./gradlew testDebugUnitTest lintDebug :app:assembleDebug :app:assembleRelease
 ```
 
+Compose instrumentation tests require an attached emulator or device:
+
+```sh
+./gradlew :app:connectedDebugAndroidTest
+```
+
 Requires JDK 17+. See `README.md` for the full module layout and how to
 install a built debug APK next to a debug Termux build.
 

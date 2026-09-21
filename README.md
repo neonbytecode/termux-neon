@@ -115,6 +115,12 @@ The project is split into small modules:
 ./gradlew testDebugUnitTest lintDebug :app:assembleDebug :app:assembleRelease
 ```
 
+On an attached emulator or device, run the Compose instrumentation tests with:
+
+```sh
+./gradlew :app:connectedDebugAndroidTest
+```
+
 Requires JDK 17+; AGP 9 builds Kotlin with its built-in compiler (version via
 `gradle/libs.versions.toml`).
 
