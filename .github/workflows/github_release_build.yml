@@ -41,7 +41,11 @@ jobs:
 
           APK_DIR_PATH="./app/build/outputs/apk/debug"
           APK_VERSION_TAG="$RELEASE_VERSION_NAME+github.debug"
-          APK_BASENAME_PREFIX="termux-styling-app_$APK_VERSION_TAG"
+          # "debug-signed" in the filename is deliberate: this APK is signed with the
+          # untrusted debug key (app/testkey_untrusted.jks), not Termux's real signing
+          # key, so it only installs next to a self-built debug Termux. See the
+          # Installation section of README.md.
+          APK_BASENAME_PREFIX="termux-neon-debug-signed_$APK_VERSION_TAG"
 
           echo "Building APK file for '$RELEASE_VERSION_NAME' release with '$APK_VERSION_TAG' tag"
           export TERMUX_STYLING_APP_BUILD__APP_VERSION_NAME="${RELEASE_VERSION_NAME/v/}" # Used by app/build.gradle.kts
