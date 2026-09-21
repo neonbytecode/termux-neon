@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.neonbytecode.neon.designsystem.FavoriteStar
@@ -72,6 +73,7 @@ import dev.neonbytecode.neon.designsystem.NeonAmber
 import dev.neonbytecode.neon.designsystem.NeonSearchField
 import dev.neonbytecode.neon.designsystem.NeonSurfaceHigh
 import dev.neonbytecode.neon.designsystem.NeonTextSecondary
+import dev.neonbytecode.neon.designsystem.NeonTheme
 import dev.neonbytecode.neon.designsystem.ScanlineOverlay
 import dev.neonbytecode.neon.designsystem.SectionLabel
 import dev.neonbytecode.neon.designsystem.StatusPill
@@ -185,6 +187,7 @@ fun NeonStylingScreen(
     val fontPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let(onImportFont)
     }
+
     val schemePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let(onImportScheme)
     }
@@ -298,6 +301,7 @@ fun NeonStylingScreen(
                         letterSpacing = 1.sp,
                     )
                 }
+
             }
             FontRow(ui, onSelectFont, onToggleFavoriteFont, onDeleteCustomFont)
             Spacer(modifier = Modifier.height(22.dp))
@@ -321,6 +325,53 @@ fun NeonStylingScreen(
                 onSaveCustomScheme(palette)
                 showSchemeEditorDialog = false
             },
+        )
+    }
+}
+
+@Preview(
+    name = "Termux Neon style control",
+    showBackground = true,
+    showSystemUi = true,
+    widthDp = 412,
+    heightDp = 915,
+)
+@Composable
+private fun NeonStylingScreenPreview() {
+    val previewPalette = AnsiPalette(
+        colors = listOf(
+            0xFF10131C.toInt(), 0xFFFF5370.toInt(), 0xFFC3E88D.toInt(), 0xFFFFCB6B.toInt(),
+            0xFF82AAFF.toInt(), 0xFFC792EA.toInt(), 0xFF89DDFF.toInt(), 0xFFEEFFFF.toInt(),
+            0xFF434758.toInt(), 0xFFFF5370.toInt(), 0xFFC3E88D.toInt(), 0xFFFFCB6B.toInt(),
+            0xFF82AAFF.toInt(), 0xFFC792EA.toInt(), 0xFF89DDFF.toInt(), 0xFFFFFFFF.toInt(),
+        ),
+        foreground = 0xFFEEFFFF.toInt(),
+        background = 0xFF10131C.toInt(),
+        cursor = 0xFF82AAFF.toInt(),
+        name = "Preview",
+    )
+    val scheme = Selectable("preview.properties")
+    val font = Selectable("JetBrainsMono.ttf")
+    val previewState = UiState(
+        termuxReady = true,
+        schemes = listOf(SchemeEntry(scheme, previewPalette)),
+        fonts = listOf(FontEntry(font)),
+        selectedScheme = scheme,
+        selectedFont = font,
+        appliedScheme = scheme,
+        appliedFont = font,
+        previewPalette = previewPalette,
+        previewSchemeName = "Preview",
+        previewFontName = "JetBrains Mono",
+        themeHealth = ThemeHealth(8.7, true, emptyList()),
+        screenStatus = ScreenStatus.READY,
+    )
+
+    NeonTheme {
+        NeonStylingScreen(
+            ui = previewState,
+            onSelectScheme = {},
+            onSelectFont = {},
         )
     }
 }
