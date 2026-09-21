@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debugging a shared-UID Android plugin</title>
+<meta name="description" content="Why a Termux theming plugin's live hot-reload silently failed, and what it took to fix it.">
+<style>
+  :root {
+    --bg: #05070c; --bg-alt: #0a0e18; --surface: #10141f;
+    --text: #e8ecf4; --text-secondary: #8b93a8;
+    --cyan: #4de8f0; --magenta: #ff4de0; --amber: #ffcc4d;
+    --border: rgba(77, 232, 240, 0.25);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(ellipse at top, var(--bg-alt), var(--bg) 70%);
+    color: var(--text);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    line-height: 1.7;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 96px; }
+  a { color: var(--cyan); }
+  .back { display: inline-block; margin-bottom: 32px; color: var(--text-secondary); text-decoration: none; font-size: 13px; letter-spacing: 1px; }
+  .back:hover { color: var(--cyan); }
+  .meta { color: var(--text-secondary); font-size: 13px; margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; }
+  h1 {
+    font-size: clamp(26px, 6vw, 38px);
+    color: var(--cyan);
+    text-shadow: 0 0 24px rgba(77, 232, 240, 0.35);
+    margin: 0 0 32px;
+    line-height: 1.3;
+  }
+  h2 { color: var(--magenta); font-size: 18px; margin-top: 40px; }
+  p { color: #cdd3e0; font-size: 15px; }
+  code {
+    background: rgba(255,255,255,0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--amber);
+    font-size: 13px;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid rgba(139, 147, 168, 0.15);
+    border-radius: 10px;
+    padding: 18px;
+    overflow-x: auto;
+    font-size: 13px;
+  }
+  pre code { background: none; padding: 0; color: #b8f2f5; }
+  footer { margin-top: 64px; color: var(--text-secondary); font-size: 13px; border-top: 1px solid rgba(139,147,168,0.15); padding-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">&larr; Termux Neon</a>
+  <div class="meta">Devlog</div>
+  <h1>Debugging a shared-UID Android plugin: why my Termux theme wasn't hot-reloading</h1>
+
+  <p><em>A devlog from building <a href="https://github.com/neonbytecode/termux-neon">Termux Neon</a>, a Compose UI rewrite of Termux's official theming add-on.</em></p>
+
+  <h2>The symptom</h2>
+  <p>Termux Neon lets you pick a terminal color scheme and font, then apply them to a running <a href="https://termux.org">Termux</a> session. The apply step itself worked fine &mdash; I could see the new <code>colors.properties</code> and <code>font.ttf</code> land correctly in Termux's data directory. But the actual terminal on screen wouldn't update. You had to fully restart Termux to see your new theme. For an app whose entire pitch is &ldquo;live preview, one tap, done,&rdquo; that's not a minor bug &mdash; it's the core feature not working.</p>
+
+  <h2>Why this app can touch Termux's files at all</h2>
+  <p>Termux Neon isn't a normal, sandboxed Android app. It's a <em>plugin</em> in the specific, old-school Android sense: it declares <code>android:sharedUserId="com.termux"</code> in its manifest, which &mdash; provided both APKs are signed with the same key &mdash; lets it run with the same UID as Termux itself. That's what makes <code>context.createPackageContext("com.termux", CONTEXT_IGNORE_SECURITY)</code> succeed and hand back Termux's own <code>filesDir</code>, so the plugin can write directly into <code>~/.termux/colors.properties</code> and <code>~/.termux/font.ttf</code> as if it <em>were</em> Termux.</p>
+  <p>Writing the files was never the problem. The problem was telling the <em>already-running</em> Termux process to notice.</p>
+
+  <h2>The reload contract</h2>
+  <p>Termux exposes a broadcast for exactly this: send an intent with action <code>com.termux.app.reload_style</code>, targeted at the <code>com.termux</code> package, and its <code>TermuxActivity</code> reloads colors and font from disk. My first implementation sent that broadcast right after writing the files and called it done. It didn't work, and there were two separate bugs stacked on top of each other.</p>
+
+  <p><strong>Bug 1 &mdash; wrong extra.</strong> I was passing a custom string extra to control whether Termux should recreate its activity. Termux doesn't read that key at all. Reading Termux's actual source turned up the real contract: a <em>boolean</em> extra called <code>com.termux.app.TermuxActivity.EXTRA_RECREATE_ACTIVITY</code>, read as <code>intent.getBooleanExtra(EXTRA_RECREATE_ACTIVITY, true)</code>. Since the receiver reloads colors/font live regardless, and only <em>optionally</em> also recreates the activity, the fix was to pass <code>false</code> explicitly &mdash; otherwise you get a jarring full activity restart on every apply, not just a color refresh:</p>
+
+  <pre><code>fun requestStyleReload(context: Context) {
+    val intent = Intent(RELOAD_STYLE_ACTION)
+        .setPackage(TERMUX_PACKAGE)
+        .putExtra(RELOAD_STYLE_EXTRA_RECREATE_ACTIVITY, false)
+    context.sendBroadcast(intent)
+}</code></pre>
+
+  <p>Fixing the extra got the broadcast <em>understood</em>. It still didn't work reliably, because of a second, more interesting bug.</p>
+
+  <p><strong>Bug 2 &mdash; nobody's listening yet.</strong> Termux only registers its <code>reload_style</code> receiver while <code>TermuxActivity</code> is started &mdash; inside its <code>onStart()</code>/<code>onStop()</code> lifecycle callbacks, not globally in the manifest. That makes sense defensively (don't listen for broadcasts you can't act on correctly), but it means: when you tap &ldquo;Apply&rdquo; <em>inside the theming app</em>, Termux's activity is backgrounded &mdash; fully covered by the theming app's own UI &mdash; so its receiver isn't registered at that exact moment. The broadcast gets sent into the void.</p>
+
+  <p>The fix isn't to abandon the live-reload broadcast &mdash; it's to guarantee the broadcast gets sent again once Termux is actually the foreground activity. When the user backs out to Termux, I bring its task forward explicitly (more on why &ldquo;explicitly&rdquo; matters below), then re-send the reload broadcast on a short delay once its <code>onStart()</code> has almost certainly fired:</p>
+
+  <pre><code>private fun returnToTermux() {
+    val launchTermux = packageManager.getLaunchIntentForPackage(TermuxEnvironment.TERMUX_PACKAGE)
+    if (launchTermux != null) {
+        launchTermux.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        startActivity(launchTermux)
+        val appContext = applicationContext
+        Handler(Looper.getMainLooper()).postDelayed(
+            { TermuxEnvironment.requestStyleReload(appContext) },
+            350L,
+        )
+    }
+    finish()
+}</code></pre>
+
+  <p>350ms is not a principled number &mdash; it's &ldquo;comfortably longer than an activity transition takes on real hardware,&rdquo; found by testing on-device rather than derived. It's a small, honest hack: there's no callback for &ldquo;the other app's receiver just registered,&rdquo; so a delay is the pragmatic tool available given the plugin's broadcast-based contract.</p>
+
+  <h2>A related bug in the same code path</h2>
+  <p>While fixing this I found a second, related issue: back navigation (gesture or button) out of the theming app didn't reliably return to Termux. A plain <code>finish()</code> relies on the default back-stack pop, which lands wherever the activity happened to be launched from &mdash; sometimes Termux, sometimes the home screen, depending on the exact launch path (Termux's own long-press menu vs. the launcher vs. <code>adb</code>). Explicitly building a launch <code>Intent</code> with <code>FLAG_ACTIVITY_REORDER_TO_FRONT</code> (see <code>returnToTermux()</code> above) removes the ambiguity: it always brings Termux's task to front regardless of how this activity was entered. This turned out to matter for the reload fix too &mdash; &ldquo;bring Termux to front&rdquo; is precisely the moment the delayed re-send needs to target.</p>
+
+  <h2>Verifying it actually works</h2>
+  <p>Screenshots don't prove a broadcast landed. What I actually checked, end-to-end, on a real device:</p>
+  <pre><code>adb shell run-as com.termux cat files/home/.termux/colors.properties</code></pre>
+  <p>confirming the applied scheme's exact values were written, then watching the live terminal repaint without a restart after backing out of the theming app &mdash; the thing that wasn't happening before either fix.</p>
+
+  <h2>The takeaway</h2>
+  <p>Cross-process communication on Android that isn't a formal <code>ContentProvider</code> or bound service &mdash; a plain broadcast between two independently-signed-but-shared-UID apps &mdash; has no compiler or IDE checking the contract for you. The receiver's <em>registration lifecycle</em> is just as much a part of the contract as the intent's action string and extras, and it's the part that's easy to miss because it only shows up as an intermittent-feeling bug (&ldquo;it works sometimes&rdquo;) rather than a clean failure. Reading the actual receiving app's source, not just its public docs, was what surfaced both bugs &mdash; the wrong extra key would never have shown up from the sending side alone.</p>
+
+  <footer>
+    Termux Neon is open source (GPLv3) &mdash; <a href="https://github.com/neonbytecode/termux-neon">source on GitHub</a>.
+  </footer>
+</div>
+</body>
+</html>
