@@ -53,6 +53,10 @@ The project uses Android Gradle Plugin 9.x and Kotlin 2.2.x, with Compose compil
 - `StyleCatalog` is the asset abstraction. It enumerates fonts and scheme files and caches bytes so the UI can preview assets without re-reading the APK every time.
 - `TermuxColorsParser` is the canonical parser for scheme files. Most color-related logic should stay in or near the theme-engine module.
 - `MainViewModel` owns the UI state, favorites, preview state, and apply operations; avoid pushing business logic into the composable layer.
+- Smart recommendations, preset import/export, theme health checks, and
+  Android quick actions should remain deterministic and offline-first.
+- Imported fonts and schemes are app-private until explicitly applied. Keep
+  filename sanitization, validation, and user-visible errors intact.
 - `AppliedStyleReader` and `TermuxStyleWriter` are the boundary with the installed Termux environment; changes to file format or parsing should be reflected in both.
 - `core/designsystem` is meant for reusable visual primitives and the terminal preview; keep app-specific behavior in `app/` instead of mixing it into the design system.
 
@@ -67,3 +71,6 @@ The project uses Android Gradle Plugin 9.x and Kotlin 2.2.x, with Compose compil
 - Prefer minimal, module-aware edits; the codebase is intentionally organized around the `app` + `core/*` split.
 - Keep style-specific logic close to the relevant module instead of scattering it across the app layer.
 - Verify asset and parsing behavior with the project’s unit tests before shipping a change that affects fonts or color schemes.
+- When changing behavior, update the README, architecture notes, changelog,
+  and relevant issue/PR guidance so beginner and advanced contributors see
+  the same contract.

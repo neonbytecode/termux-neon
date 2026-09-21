@@ -56,4 +56,16 @@ object TermuxColorsParser {
         val rgb = value.toIntOrNull(16) ?: return null
         return 0xFF000000.toInt() or rgb
     }
+
+    fun toPropertiesString(palette: AnsiPalette): String = buildString {
+        appendLine("# ${palette.name} scheme for Termux")
+        appendLine("background=${formatHexColor(palette.background)}")
+        appendLine("foreground=${formatHexColor(palette.foreground)}")
+        appendLine("cursor=${formatHexColor(palette.cursor)}")
+        palette.colors.forEachIndexed { i, argb ->
+            appendLine("color$i=${formatHexColor(argb)}")
+        }
+    }
+
+    fun formatHexColor(argb: Int): String = String.format("#%06X", argb and 0xFFFFFF)
 }

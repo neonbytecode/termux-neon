@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Termux Neon</string>
+    <string name="shortcut_open_label">Style terminal</string>
+    <string name="shortcut_open_long_label">Open Termux Neon style control</string>
 </resources>

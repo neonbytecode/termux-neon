@@ -1,5 +1,6 @@
 package dev.neonbytecode.neon.themeengine
 
+import org.junit.Assert
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -79,5 +80,30 @@ class TermuxColorsParserTest {
         assertEquals(0xFF000000.toInt(), palette.foreground)
         assertEquals(0xFF111111.toInt(), palette.colors[0])
         assertEquals(0xFF222222.toInt(), palette.colors[8])
+    }
+
+    @Test
+    fun `DemoScreen builds lines for all preview modes`() {
+        val palette = AnsiPalette.DEFAULT
+        PreviewMode.entries.forEach { mode ->
+            val lines = DemoScreen.build(palette, "cyberpunk", "Fira Code", mode, customText = "Hello Neon")
+            Assert.assertTrue("Lines should not be empty for $mode", lines.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun `toPropertiesString exports valid termux properties format`() {
+        val original = AnsiPalette.DEFAULT.copy(name = "test_theme")
+        val propertiesStr = TermuxColorsParser.toPropertiesString(original)
+
+        val reParsed = TermuxColorsParser.parseProperties(
+            ByteArrayInputStream(propertiesStr.toByteArray(Charsets.UTF_8)),
+            "test_theme",
+        )
+
+        assertEquals(original.background, reParsed.background)
+        assertEquals(original.foreground, reParsed.foreground)
+        assertEquals(original.cursor, reParsed.cursor)
+        assertEquals(original.colors, reParsed.colors)
     }
 }

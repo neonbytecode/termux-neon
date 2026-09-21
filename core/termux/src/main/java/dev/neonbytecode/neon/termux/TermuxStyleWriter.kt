@@ -161,13 +161,28 @@ class TermuxStyleWriter(
         return true
     }
 
-    private fun targetContent(isColors: Boolean, defaultChoice: Boolean, assetName: String): ByteArray =
-        when {
-            !defaultChoice -> if (isColors) catalog.schemeBytes(assetName) else catalog.fontBytes(assetName)
-            isColors -> TermuxEnvironment.DEFAULT_COLORS_MARKER.toByteArray(StandardCharsets.UTF_8)
-            // Leaving an empty font file is the marker for Termux's default typeface.
-            else -> ByteArray(0)
+    private fun targetContent(isColors: Boolean, defaultChoice: Boolean, assetName: String): ByteArray {
+        if (defaultChoice) {
+            return if (isColors) TermuxEnvironment.DEFAULT_COLORS_MARKER.toByteArray(StandardCharsets.UTF_8)
+            else ByteArray(0)
         }
+        if (isColors) {
+            val customSchemeFile = File(File(context.filesDir, "custom_schemes"), assetName)
+            if (customSchemeFile.isFile && customSchemeFile.length() > 0L) {
+                return customSchemeFile.readBytes()
+            }
+            return runCatching { catalog.schemeBytes(assetName) }.getOrElse {
+                TermuxEnvironment.DEFAULT_COLORS_MARKER.toByteArray(StandardCharsets.UTF_8)
+            }
+        }
+
+        val customFontFile = File(File(context.filesDir, "custom_fonts"), assetName)
+        if (customFontFile.isFile && customFontFile.length() > 0L) {
+            return customFontFile.readBytes()
+        }
+
+        return catalog.fontBytes(assetName)
+    }
 
     private fun existingOrDefault(file: File, isColors: Boolean): ByteArray =
         if (file.isFile) file.readBytes() else targetContent(

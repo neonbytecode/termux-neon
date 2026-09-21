@@ -1,14 +1,16 @@
 ---
 name: Bug report
 about: Create a report to help us improve Termux Neon application
+title: "[Bug] "
+labels: bug
 
 ---
 
 <!--
 IMPORTANT:
 
-1. Support of Android 5.x - 6.x is finished.
-2. Note that Termux Neon does not perform Color or Font rendering.
+1. Termux Neon requires Android 9 / API 28 or newer.
+2. Termux and Termux Neon must come from the same signing source.
 3. Fill the template AFTER comments.
 -->
 
@@ -32,5 +34,8 @@ A clear and concise description of what you expected to happen.
 **Additional information**
 
 * Termux application version:
+* Termux Neon version or commit:
 * Android OS version:
 * Device model:
+* Installation sources for both apps:
+* Relevant logcat output (remove personal paths and secrets):

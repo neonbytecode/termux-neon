@@ -1,19 +1,31 @@
 ---
 name: Feature request
 about: Suggest a new feature, color scheme or font for Termux Neon application
+title: "[Feature] "
+labels: enhancement
 
 ---
 
 <!--
 IMPORTANT:
 
-1. Support of Android 5.x - 6.x is finished.
+1. Requests must preserve the Termux plugin contract.
 2. Fill the template AFTER comments.
 -->
 
 **Feature description**
 <!--
 Describe the feature and why you want it.
+-->
+
+**User problem**
+<!--
+Who benefits from this and what problem does it solve?
+-->
+
+**Compatibility considerations**
+<!--
+Does this touch shared UID behavior, Termux files, signing, or broadcasts?
 -->
 
 **Reference implementation**

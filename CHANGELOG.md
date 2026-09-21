@@ -1,66 +1,58 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+All notable changes to this project are documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-09-21
-
-This release marks the from-scratch rewrite of the app: a Jetpack Compose UI
-on top of a modular architecture, replacing the original View-based
-`termux-styling` app while keeping the exact same plugin contract
-(`com.termux.styling` package, shared `sharedUserId` with Termux).
-
 ### Added
 
-- Compose UI with a neon-styled theme, live scanline/grid backdrop, and a
-  live terminal preview that updates as you browse schemes and fonts.
-- 15 curated, vivid color schemes (Catppuccin Mocha/Latte, Cyberpunk, Gotham,
-  Solarized Dark/Light, Dracula, Nord, Gruvbox Dark, Tokyo Night, Rosé Pine,
-  Monokai, One Dark, Ayu Dark, Kanagawa), replacing the previous full Base16
-  scheme set with a smaller, hand-picked collection.
-- Search/filter across both schemes and fonts.
-- Favorites (star) with persistence and favorites-first sorting.
-- Random shuffle button for browsing scheme/font combinations.
-- Per-chip live font preview.
-- Custom text (foreground) color override via 10 curated swatches, applied
-  independently of the selected color scheme; tapping a selected swatch
-  again clears the override.
-- A single unified **Apply All** action that applies the selected scheme,
-  font, and text color override together in one tap, replacing the previous
-  separate "Apply scheme" / "Apply font" buttons.
-- Asset integrity test guarding every shipped color scheme and font file.
+- Improved project documentation and contributor guidance.
+- Clearer module-level architecture notes and onboarding context for future contributors.
+- Smart Pick recommendations based on local time of day.
+- Versioned JSON preset export/import.
+- Live palette readability feedback based on foreground/background contrast.
+- Quick Settings tile and launcher shortcut entry points.
 
 ### Changed
 
-- Gesture/hardware back now reliably returns to Termux's own task
-  (`FLAG_ACTIVITY_REORDER_TO_FRONT`) instead of occasionally landing on the
-  home screen, regardless of how the activity was launched.
-- Style hot-reload into the live Termux session now works reliably: the
-  reload broadcast's extra key/value now matches Termux's actual contract,
-  and is re-sent shortly after Termux regains focus to account for
-  Termux only registering its receiver during `onStart`/`onStop`.
-- The app now always renders in dark mode — its CRT/neon visual identity has
-  no coherent light-mode equivalent.
-- Floating apply controls: replaced a bordered, solid-background action bar
-  with a borderless vertical scrim so the primary action floats over content
-  without a hard panel edge.
+- Improved production diagnostics, imported-asset validation, documentation
+  navigation, accessibility guidance, and contributor templates.
+
+- Refined the README to better explain the project purpose, compatibility constraints, architecture, and usage flow for both beginner and advanced readers.
+
+## [1.0.0] - 2026-09-21
+
+This release marks the from-scratch rewrite of the app: a Jetpack Compose UI built on a modular architecture, replacing the previous View-based `termux-styling` implementation while preserving the exact plugin contract expected by Termux (`com.termux.styling` package, shared `sharedUserId`, and `~/.termux` file paths).
+
+### Added
+
+- Compose UI with a neon-styled theme, scanline/grid backdrop, and live terminal preview for scheme and font browsing.
+- 15 curated color schemes, including Catppuccin, Cyberpunk, Gotham, Solarized, Dracula, Nord, Gruvbox, Tokyo Night, Rosé Pine, Monokai, One Dark, Ayu Dark, and Kanagawa.
+- Search and filtering across color schemes and fonts.
+- Favorites with persistence and favorites-first ordering.
+- Randomized shuffle mode for previewing scheme/font combinations.
+- Per-card live font preview.
+- A custom foreground text color override using curated swatches, applied independently of the selected scheme.
+- A single unified **Apply All** action that applies the chosen scheme, font, and foreground color together.
+- Asset integrity tests covering shipped schemes and fonts.
+
+### Changed
+
+- Hardware/back navigation now returns to Termux more reliably using the proper activity reorder behavior.
+- Hot-reload behavior was tightened so the app re-sends the reload broadcast when Termux is back in focus, accounting for the receiver lifecycle in Termux itself.
+- The visual design is now consistently dark-mode-only, matching the CRT/neon aesthetic of the app.
+- The floating apply controls were simplified to feel more native and unobtrusive while keeping the call to action prominent.
 
 ### Removed
 
-- All Base16 scheme variants, in favor of the curated 15-scheme set above.
-- The Monofur font, after a license audit found it distributed under
-  freeware terms with no recognized FOSS license grant (see
-  `THIRD_PARTY_LICENSES.md`).
+- Older Base16-heavy scheme variants in favor of the curated 15-scheme collection.
+- The Monofur font after license review found it was not distributed under a clear FOSS-compatible license.
 
 ## Earlier releases (pre-rewrite)
 
-Versions prior to the Compose rewrite tracked the original `termux-styling`
-app closely. See the git history for details; notable tagged releases
-included `v0.31`, `v0.32.0`, and `v0.32.1`.
+Version history before the Compose rewrite tracked the earlier `termux-styling` app more closely. See the git history for older tagged releases such as `v0.31`, `v0.32.0`, and `v0.32.1`.
 
 [Unreleased]: https://github.com/neonbytecode/termux-neon/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/neonbytecode/termux-neon/compare/v0.32.1...v1.0.0

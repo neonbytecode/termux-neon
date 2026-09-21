@@ -30,8 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
 import dev.neonbytecode.neon.themeengine.AnsiPalette
 import dev.neonbytecode.neon.themeengine.DemoScreen
+import dev.neonbytecode.neon.themeengine.PreviewMode
 import dev.neonbytecode.neon.themeengine.ScreenLine
 
 private val PanelShape = RoundedCornerShape(14.dp)
@@ -47,11 +49,14 @@ fun TerminalPreview(
     schemeName: String,
     fontName: String,
     font: FontFamily = FontFamily.Monospace,
+    mode: PreviewMode = PreviewMode.PROMPT,
+    customText: String = "",
+    fontSize: TextUnit = 12.5.sp,
     modifier: Modifier = Modifier,
     scanlineStrength: Float = 1f,
 ) {
-    val lines = remember(palette, schemeName, fontName, font) {
-        DemoScreen.build(palette, schemeName, fontName)
+    val lines = remember(palette, schemeName, fontName, mode, customText) {
+        DemoScreen.build(palette, schemeName, fontName, mode, customText)
     }
 
     Box(
@@ -65,7 +70,7 @@ fun TerminalPreview(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
         ) {
-            PreviewTitleBar(palette, schemeName)
+            PreviewTitleBar(palette, schemeName, mode)
             Spacer(modifier = Modifier.height(2.dp))
             Column(
                 modifier = Modifier
@@ -78,8 +83,8 @@ fun TerminalPreview(
                     Text(
                         text = line.toAnnotated(palette),
                         fontFamily = font,
-                        fontSize = 12.5.sp,
-                        lineHeight = 15.sp,
+                        fontSize = fontSize,
+                        lineHeight = (fontSize.value * 1.2f).sp,
                         color = Color(palette.foreground),
                         maxLines = 1,
                     )
@@ -91,7 +96,7 @@ fun TerminalPreview(
 }
 
 @Composable
-private fun PreviewTitleBar(palette: AnsiPalette, schemeName: String) {
+private fun PreviewTitleBar(palette: AnsiPalette, schemeName: String, mode: PreviewMode = PreviewMode.PROMPT) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -114,7 +119,7 @@ private fun PreviewTitleBar(palette: AnsiPalette, schemeName: String) {
         }
         Spacer(modifier = Modifier.size(10.dp))
         Text(
-            text = "termux-neon  ▸  $schemeName",
+            text = "termux-neon  ▸  $schemeName (${mode.label})",
             fontFamily = FontFamily.Monospace,
             fontSize = 10.sp,
             letterSpacing = 1.2.sp,
