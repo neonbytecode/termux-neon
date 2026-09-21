@@ -86,12 +86,14 @@ jobs:
         run: |
           set -euo pipefail
           APK="$APK_DIR_PATH/${APK_BASENAME_PREFIX}.apk"
-          APPLICATION_ID="$(apkanalyzer manifest application-id "$APK")"
+          APKANALYZER="$(find "$ANDROID_HOME" -type f -name apkanalyzer -perm -111 | sort -V | tail -1)"
+          test -n "$APKANALYZER"
+          APPLICATION_ID="$("$APKANALYZER" manifest application-id "$APK")"
           test "$APPLICATION_ID" = "com.termux.styling"
 
-          if apkanalyzer manifest permissions "$APK" | grep -q .; then
+          if "$APKANALYZER" manifest permissions "$APK" | grep -q .; then
             echo "Unexpected runtime permissions found in $APK" >&2
-            apkanalyzer manifest permissions "$APK"
+            "$APKANALYZER" manifest permissions "$APK"
             exit 1
           fi
 
