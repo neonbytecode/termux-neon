@@ -33,3 +33,11 @@ https://neonbytecode.github.io/termux-neon/blog/shared-uid-hot-reload
 
 I’d especially appreciate compatibility feedback from people using Termux
 plugins or testing this with a debug-signed Termux build.
+
+<!--
+When posting: attach docs/assets/demo.gif directly to the Reddit post
+(its own image/gallery uploader, not a markdown link — Reddit's composer
+doesn't reliably render external image URLs pasted as text). It's the
+one showing the actual fix working: pick a scheme/font, tap Apply All,
+watch it repaint live.
+-->
