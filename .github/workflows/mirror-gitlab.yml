@@ -1,0 +1,22 @@
+name: Mirror to GitLab
+
+# GitLab.com's "pull mirroring" (GitLab fetching from GitHub itself) is a
+# Premium/Ultimate-only feature, so this repo pushes to GitLab instead —
+# free on both sides, GitHub stays the single source of truth.
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitLab mirror
+        run: |
+          git push --force "https://oauth2:${{ secrets.GITLAB_MIRROR_TOKEN }}@gitlab.com/neonbytecode/termux-neon.git" HEAD:master
