@@ -1,3 +1,8 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.TaskAction
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -10,6 +15,16 @@ plugins {
 val appVersionName = providers.environmentVariable("TERMUX_STYLING_APP_BUILD__APP_VERSION_NAME").orNull
 val defaultVersionName = "1.0.0"
 val resolvedVersionName = appVersionName ?: defaultVersionName
+
+abstract class PrintVersionNameTask : DefaultTask() {
+    @get:Input
+    abstract val versionName: Property<String>
+
+    @TaskAction
+    fun printVersionName() {
+        println(versionName.get())
+    }
+}
 
 // https://semver.org/spec/v2.0.0.html#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 val semverPattern = Regex(
@@ -57,10 +72,8 @@ android {
 
 validateVersionName(resolvedVersionName)
 
-tasks.register("printVersionName") {
-    doLast {
-        println(resolvedVersionName)
-    }
+tasks.register<PrintVersionNameTask>("printVersionName") {
+    versionName.set(resolvedVersionName)
 }
 
 dependencies {
