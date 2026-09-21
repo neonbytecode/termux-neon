@@ -76,6 +76,21 @@ user ID — so it installs and runs exactly where the upstream add-on did.
   See <https://github.com/termux/termux-app#Installation> for background on
   why signature sources must match across Termux and its plugins.
 
+  ### Distribution and signing
+
+  Termux Neon must be installed from the same distribution source as Termux:
+
+  | Termux source | Termux Neon source |
+  |---|---|
+  | F-Droid | F-Droid |
+  | A self-built debug Termux | A locally built debug APK |
+  | A self-built release Termux | A locally signed release APK using the same key |
+
+  The GitHub Actions APK is a debug/testing artifact. It is not signed with the
+  F-Droid or official Termux release key and should not be presented as a
+  general-purpose installation for those builds. F-Droid builds and signs its
+  own artifact when the metadata submission is accepted.
+
 ## How to use
 
 1. When inside Termux, long press anywhere on the terminal.
@@ -89,6 +104,57 @@ user ID — so it installs and runs exactly where the upstream add-on did.
 
 If the scheme/font is changed outside of the app (e.g. `echo` into
 `~/.termux/colors.properties`), the badges re-sync when the app resumes.
+
+Favorites are stored in the app's private `SharedPreferences`; they are not
+written to Termux's style files. A selected preview is also local UI state.
+Only **Apply All** writes `colors.properties` and `font.ttf`.
+
+## Troubleshooting
+
+### “Termux not found”
+
+Install Termux before launching the add-on, then reopen Termux Neon.
+
+### “Signed by a different source”
+
+Uninstall both apps and reinstall them from the same distribution. Android's
+shared-UID contract requires the APK signatures to match; an F-Droid Termux
+cannot share files with a GitHub debug APK, and vice versa.
+
+### Styles apply but the terminal does not update
+
+Return to Termux after applying. The add-on writes the files first and sends a
+package-scoped reload broadcast when Termux is foregrounded. If the terminal
+still does not repaint, verify that the files exist under
+`~/.termux/colors.properties` and `~/.termux/font.ttf`, then retry from the
+same-source installation.
+
+### The app shows an inaccessible Termux environment
+
+This usually indicates a mismatched signature, an incomplete Termux
+installation, or inaccessible Termux private storage. Reinstall both apps
+from the same source before reporting a bug.
+
+## Release process
+
+1. Update the version and `CHANGELOG.md`.
+2. Run `./gradlew testDebugUnitTest lintDebug :app:assembleDebug :app:assembleRelease`.
+3. Confirm the F-Droid recipe points at the release tag.
+4. Create and push an annotated `vMAJOR.MINOR.PATCH` tag.
+5. Create the GitHub release with debug artifacts clearly marked as testing
+   only. The release workflow validates debug and unsigned release APKs but
+   does not hold or use a production signing key.
+6. Submit or update the F-Droid metadata separately; F-Droid performs its
+   own build and signing.
+
+## Why the shared UID is required
+
+The legacy Termux add-on contract uses `android:sharedUserId="com.termux"`
+and the `com.termux.styling` application ID. This allows the add-on to access
+Termux's private `~/.termux` files and is why signature matching is mandatory.
+The manifest also exposes `TermuxStyleActivity`, which Termux launches from
+its Style menu. Do not remove or rename these compatibility identifiers
+without coordinating an upstream migration.
 
 ## Relationship to termux-styling
 

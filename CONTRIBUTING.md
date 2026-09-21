@@ -33,6 +33,17 @@ managed signing setup when testing shared-UID compatibility.
 Release signing secrets are CI-only — contributors never need (and should
 never be asked for) a copy of the release signing key.
 
+The supported local verification command is:
+
+```sh
+./gradlew testDebugUnitTest lintDebug :app:assembleDebug :app:assembleRelease
+```
+
+The release workflow validates both APK variants but intentionally does not
+sign a production artifact. Do not add a keystore or password to the
+repository; production signing belongs to F-Droid or a separately managed
+release environment.
+
 ## Adding a font or color scheme
 
 This is the most common kind of external contribution, so here's the
