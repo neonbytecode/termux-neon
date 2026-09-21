@@ -63,10 +63,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _ui = MutableStateFlow(UiState())
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
-    init {
-        refresh()
-    }
-
     fun refresh() {
         viewModelScope.launch(Dispatchers.IO) {
             environment = TermuxEnvironment.evaluate(context)
