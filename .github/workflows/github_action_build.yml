@@ -38,14 +38,17 @@ jobs:
           fi
 
           # Set RELEASE_VERSION_NAME to "<CURRENT_VERSION_NAME>+<last_commit_hash>"
-          CURRENT_VERSION_NAME_REGEX='^\s*val defaultVersionName = "([^"]+)"$'
-          CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle.kts | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
+          CURRENT_VERSION_NAME="$(./gradlew -q :app:printVersionName)"
           if [ -z "$CURRENT_VERSION_NAME" ]; then
               exit_on_error "Failed to read versionName from ./app/build.gradle.kts."
           fi
           RELEASE_VERSION_NAME="v$CURRENT_VERSION_NAME+${GITHUB_SHA:0:7}" # The "+" is necessary so that versioning precedence is not affected
           if ! printf "%s" "${RELEASE_VERSION_NAME/v/}" | grep -qP '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'; then
             exit_on_error "The release version '${RELEASE_VERSION_NAME/v/}' generated from current version '$CURRENT_VERSION_NAME' is not a valid version as per semantic version '2.0.0' spec in the format 'major.minor.patch(-prerelease)(+buildmetadata)'. https://semver.org/spec/v2.0.0.html."
+          fi
+
+          if git grep -n -E '(storePassword|keyPassword)[[:space:]]*=' -- ':!*.md'; then
+            exit_on_error "Potential hardcoded signing credential found."
           fi
 
           APK_DIR_PATH="./app/build/outputs/apk/debug"
@@ -59,7 +62,7 @@ jobs:
 
           echo "Building APK file for '$RELEASE_VERSION_NAME' release with '$APK_VERSION_TAG' tag"
           export TERMUX_STYLING_APP_BUILD__APP_VERSION_NAME="${RELEASE_VERSION_NAME/v/}" # Used by app/build.gradle.kts
-          if ! ./gradlew testDebugUnitTest lintDebug assembleDebug; then
+          if ! ./gradlew testDebugUnitTest lintDebug :app:assembleDebug :app:assembleRelease; then
             exit_on_error "Build/test/lint failed for '$RELEASE_VERSION_NAME' release with '$APK_VERSION_TAG' tag."
           fi
 

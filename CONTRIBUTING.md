@@ -7,11 +7,15 @@ few days, and that's normal, not a sign your contribution isn't wanted.
 ## Building and testing
 
 ```sh
-./gradlew testDebugUnitTest lintDebug assembleDebug
+./gradlew testDebugUnitTest lintDebug :app:assembleDebug :app:assembleRelease
 ```
 
 Requires JDK 17+. See `README.md` for the full module layout and how to
 install a built debug APK next to a debug Termux build.
+
+Debug signing uses Gradle's standard local debug keystore. Do not commit
+keystores or passwords; use a local Android debug keystore or a separately
+managed signing setup when testing shared-UID compatibility.
 
 ## Branch/PR conventions
 

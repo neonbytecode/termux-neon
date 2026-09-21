@@ -6,10 +6,10 @@ plugins {
 // CI injects a semver build like "0.32.1+<commit-sha>" (the "+" preserves
 // version precedence) via TERMUX_STYLING_APP_BUILD__APP_VERSION_NAME. Locally
 // it stays empty and the default versionName below is used.
-// NOTE: CI greps this exact `val defaultVersionName` line to compute the
-// release version — keep the shape stable, or update github_action_build.yml.
+// CI resolves this value through the `printVersionName` task.
 val appVersionName = providers.environmentVariable("TERMUX_STYLING_APP_BUILD__APP_VERSION_NAME").orNull
 val defaultVersionName = "1.0.0"
+val resolvedVersionName = appVersionName ?: defaultVersionName
 
 // https://semver.org/spec/v2.0.0.html#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 val semverPattern = Regex(
@@ -33,19 +33,7 @@ android {
         minSdk = 28
         targetSdk = 37
         versionCode = 2000
-        versionName = appVersionName ?: defaultVersionName
-    }
-
-    signingConfigs {
-        // Untrusted debug-only key so the add-on can be installed alongside a
-        // debug build of Termux that is signed with the shared Termux key.
-        // Release signing must come from CI/secrets, never from the repo.
-        getByName("debug") {
-            storeFile = file("testkey_untrusted.jks")
-            storePassword = "xrj45yWGLbsO7W0v"
-            keyAlias = "alias"
-            keyPassword = "xrj45yWGLbsO7W0v"
-        }
+        versionName = resolvedVersionName
     }
 
     buildTypes {
@@ -53,9 +41,6 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.txt")
-        }
-        debug {
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -69,7 +54,13 @@ android {
     }
 }
 
-validateVersionName(appVersionName ?: defaultVersionName)
+validateVersionName(resolvedVersionName)
+
+tasks.register("printVersionName") {
+    doLast {
+        println(resolvedVersionName)
+    }
+}
 
 dependencies {
     implementation(project(":core:termux"))

@@ -69,7 +69,9 @@ user ID — so it installs and runs exactly where the upstream add-on did.
   adb install app/build/outputs/apk/debug/app-debug.apk
   ```
 
-  Per-push CI builds are also available from the
+  The debug APK uses Gradle's local debug signing configuration and is for
+  testing only; it will not install beside an official Termux build unless
+  both apps are signed by the same key. Per-push CI builds are also available from the
   [workflow runs](https://github.com/neonbytecode/termux-neon/actions/workflows/github_action_build.yml).
   See <https://github.com/termux/termux-app#Installation> for background on
   why signature sources must match across Termux and its plugins.
@@ -110,11 +112,16 @@ The project is split into small modules:
 - `:core:designsystem` — Neon theme and reusable building blocks.
 
 ```sh
-./gradlew testDebugUnitTest lintDebug assembleDebug
+./gradlew testDebugUnitTest lintDebug :app:assembleDebug :app:assembleRelease
 ```
 
 Requires JDK 17+; AGP 9 builds Kotlin with its built-in compiler (version via
 `gradle/libs.versions.toml`).
+
+GitHub release workflows validate both debug and unsigned release APKs and
+publish them as workflow artifacts. Release signing is intentionally not
+performed in CI without a separately managed signing key; F-Droid signs its
+own builds.
 
 The `setup-fonts.sh` / `setup-nerd-fonts.sh` scripts regenerate the bundled
 font assets. `fontpatcher-py3.patch` patches the powerline font patcher for

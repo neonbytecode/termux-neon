@@ -5,19 +5,14 @@ on:
     types:
       - published
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ env.GITHUB_REF }}
+          ref: ${{ github.ref }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -25,55 +20,34 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Build and upload files to release
-        shell: bash {0}
+      - name: Build and validate APKs
+        shell: bash
         run: |
-          exit_on_error() {
-              echo "$1"
-              echo "Deleting '$RELEASE_VERSION_NAME' release and '$GITHUB_REF' tag"
-              gh release delete "$RELEASE_VERSION_NAME" --yes || true
-              git push --delete origin "$GITHUB_REF" || true
-              exit 1
-          }
-
-          echo "Setting vars"
-          RELEASE_VERSION_NAME="${GITHUB_REF/refs\/tags\//}"
-          if ! printf "%s" "${RELEASE_VERSION_NAME/v/}" | grep -qP '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'; then
-            exit_on_error "The release version '${RELEASE_VERSION_NAME/v/}' is not a valid version as per semantic version '2.0.0' spec in the format 'major.minor.patch(-prerelease)(+buildmetadata)'. https://semver.org/spec/v2.0.0.html."
+          set -euo pipefail
+          release_version="${GITHUB_REF_NAME#v}"
+          if ! printf "%s" "$release_version" | grep -qP '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'; then
+            echo "Invalid release version '$release_version'." >&2
+            exit 1
           fi
 
-          APK_DIR_PATH="./app/build/outputs/apk/debug"
-          APK_VERSION_TAG="$RELEASE_VERSION_NAME+github.debug"
-          # "debug-signed" in the filename is deliberate: this APK is signed with the
-          # untrusted debug key (app/testkey_untrusted.jks), not Termux's real signing
-          # key, so it only installs next to a self-built debug Termux. See the
-          # Installation section of README.md.
-          APK_BASENAME_PREFIX="termux-neon-debug-signed_$APK_VERSION_TAG"
+          export TERMUX_STYLING_APP_BUILD__APP_VERSION_NAME="$release_version"
+          ./gradlew testDebugUnitTest lintDebug :app:assembleDebug :app:assembleRelease
 
-          echo "Building APK file for '$RELEASE_VERSION_NAME' release with '$APK_VERSION_TAG' tag"
-          export TERMUX_STYLING_APP_BUILD__APP_VERSION_NAME="${RELEASE_VERSION_NAME/v/}" # Used by app/build.gradle.kts
-          if ! ./gradlew testDebugUnitTest lintDebug assembleDebug; then
-            exit_on_error "Build/test/lint failed for '$RELEASE_VERSION_NAME' release with '$APK_VERSION_TAG' tag."
-          fi
+          debug_dir="app/build/outputs/apk/debug"
+          release_dir="app/build/outputs/apk/release"
+          debug_name="termux-neon-debug_${GITHUB_REF_NAME}.apk"
+          release_name="termux-neon-release-unsigned_${GITHUB_REF_NAME}.apk"
+          cp "$debug_dir/app-debug.apk" "$debug_dir/$debug_name"
+          cp "$release_dir/app-release-unsigned.apk" "$release_dir/$release_name"
+          (cd "$debug_dir" && sha256sum "$debug_name" > checksums-debug-sha256.txt)
+          (cd "$release_dir" && sha256sum "$release_name" > checksums-release-sha256.txt)
 
-          echo "Validating APK file"
-          GENERIC_APK="$APK_DIR_PATH/app-debug.apk"
-          if ! test -f "$GENERIC_APK"; then
-            files_found="$(ls "$APK_DIR_PATH")"
-            exit_on_error "Failed to find built APK file at '$GENERIC_APK'. Files found: "$'\n'"$files_found"
-          fi
-          mv "$GENERIC_APK" "$APK_DIR_PATH/${APK_BASENAME_PREFIX}.apk"
-
-          echo "Generating checksums-sha256.txt file"
-          if ! (cd "$APK_DIR_PATH"; sha256sum "${APK_BASENAME_PREFIX}.apk" > checksums-sha256.txt); then
-            exit_on_error "Generate checksums-sha256.txt file failed for '$RELEASE_VERSION_NAME' release."
-          fi
-          echo "checksums-sha256.txt:"$'\n```\n'"$(cat "$APK_DIR_PATH/checksums-sha256.txt")"$'\n```'
-
-          echo "Uploading files to release"
-          if ! gh release upload "$RELEASE_VERSION_NAME" \
-            "$APK_DIR_PATH/${APK_BASENAME_PREFIX}.apk" \
-            "$APK_DIR_PATH/checksums-sha256.txt" \
-          ; then
-            exit_on_error "Upload files to release failed for '$RELEASE_VERSION_NAME' release."
-          fi
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: termux-neon-${{ github.ref_name }}
+          path: |
+            app/build/outputs/apk/debug/termux-neon-debug_${{ github.ref_name }}.apk
+            app/build/outputs/apk/debug/checksums-debug-sha256.txt
+            app/build/outputs/apk/release/termux-neon-release-unsigned_${{ github.ref_name }}.apk
+            app/build/outputs/apk/release/checksums-release-sha256.txt

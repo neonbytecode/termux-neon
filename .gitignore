@@ -18,6 +18,7 @@ local.properties
 
 # Signing files
 .signing/
+app/*.jks
 
 # User-specific configurations
 /.idea/
