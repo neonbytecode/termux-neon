@@ -4,6 +4,11 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)build and re-attach assets for, e.g. v1.0.0"
+        required: true
 
 permissions:
   contents: write # required to attach APK assets to the release itself
@@ -11,11 +16,13 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}
+          ref: refs/tags/${{ env.RELEASE_TAG }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -30,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          release_version="${GITHUB_REF_NAME#v}"
+          release_version="${RELEASE_TAG#v}"
           if ! printf "%s" "$release_version" | grep -qP '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'; then
             echo "Invalid release version '$release_version'." >&2
             exit 1
@@ -41,8 +48,8 @@ jobs:
 
           debug_dir="app/build/outputs/apk/debug"
           release_dir="app/build/outputs/apk/release"
-          debug_name="termux-neon-debug_${GITHUB_REF_NAME}.apk"
-          release_name="termux-neon-release-unsigned_${GITHUB_REF_NAME}.apk"
+          debug_name="termux-neon-debug_${RELEASE_TAG}.apk"
+          release_name="termux-neon-release-unsigned_${RELEASE_TAG}.apk"
           cp "$debug_dir/app-debug.apk" "$debug_dir/$debug_name"
           cp "$release_dir/app-release-unsigned.apk" "$release_dir/$release_name"
           (cd "$debug_dir" && sha256sum "$debug_name" > checksums-debug-sha256.txt)
@@ -51,11 +58,11 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: termux-neon-${{ github.ref_name }}
+          name: termux-neon-${{ env.RELEASE_TAG }}
           path: |
-            app/build/outputs/apk/debug/termux-neon-debug_${{ github.ref_name }}.apk
+            app/build/outputs/apk/debug/termux-neon-debug_${{ env.RELEASE_TAG }}.apk
             app/build/outputs/apk/debug/checksums-debug-sha256.txt
-            app/build/outputs/apk/release/termux-neon-release-unsigned_${{ github.ref_name }}.apk
+            app/build/outputs/apk/release/termux-neon-release-unsigned_${{ env.RELEASE_TAG }}.apk
             app/build/outputs/apk/release/checksums-release-sha256.txt
 
       # The workflow-run artifact above expires and needs a GitHub login to
@@ -65,10 +72,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${{ github.ref_name }}" \
-            "app/build/outputs/apk/debug/termux-neon-debug_${{ github.ref_name }}.apk" \
+          gh release upload "${{ env.RELEASE_TAG }}" \
+            "app/build/outputs/apk/debug/termux-neon-debug_${{ env.RELEASE_TAG }}.apk" \
             "app/build/outputs/apk/debug/checksums-debug-sha256.txt" \
-            "app/build/outputs/apk/release/termux-neon-release-unsigned_${{ github.ref_name }}.apk" \
+            "app/build/outputs/apk/release/termux-neon-release-unsigned_${{ env.RELEASE_TAG }}.apk" \
             "app/build/outputs/apk/release/checksums-release-sha256.txt" \
             --repo "${{ github.repository }}" \
             --clobber
