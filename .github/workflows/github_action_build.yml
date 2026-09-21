@@ -91,9 +91,10 @@ jobs:
           APPLICATION_ID="$("$APKANALYZER" manifest application-id "$APK")"
           test "$APPLICATION_ID" = "com.termux.styling"
 
-          if "$APKANALYZER" manifest permissions "$APK" | grep -q .; then
+          UNEXPECTED_PERMISSIONS="$("$APKANALYZER" manifest permissions "$APK" | grep -v '^com.termux.styling.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION$' || true)"
+          if test -n "$UNEXPECTED_PERMISSIONS"; then
             echo "Unexpected runtime permissions found in $APK" >&2
-            "$APKANALYZER" manifest permissions "$APK"
+            printf '%s\n' "$UNEXPECTED_PERMISSIONS"
             exit 1
           fi
 
