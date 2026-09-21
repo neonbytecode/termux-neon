@@ -1,18 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    android:sharedUserId="com.termux" >
+    xmlns:tools="http://schemas.android.com/tools"
+    android:sharedUserId="com.termux"
+    tools:ignore="Deprecated">
+    <!--
+        android:sharedUserId is deprecated upstream, but it is the legacy
+        Termux add-on contract and must stay. Do NOT set
+        sharedUserMaxSdkVersion: it would void the contract on Android 13+.
+    -->
 
-    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme" >
+        android:supportsRtl="true"
+        android:theme="@style/Theme.TermuxNeon"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:enableOnBackInvokedCallback="true"
+        tools:targetApi="37">
+
+        <!--
+            Termux launches this exact component (package com.termux.styling,
+            class .TermuxStyleActivity) from its context menu, so both the
+            class name and package name are part of the plugin contract.
+            Exclusive to Termux add-ons sharing the com.termux signature.
+        -->
         <activity
             android:name=".TermuxStyleActivity"
-            android:noHistory="true"
-            android:exported="false" >
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
     </application>
 

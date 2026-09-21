@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Termux Neon</string>
+    <color name="neon_bg">#0A0A12</color>
 </resources>

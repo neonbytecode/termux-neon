@@ -14,18 +14,22 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.parallel=true -Dorg.gradle.caching=true"
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
 
-      - name: Build
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Build, test and lint
         shell: bash {0}
         run: |
           exit_on_error() { echo "$1"; exit 1; }
-
-          if [ -z "$JAVA_HOME_17_X64" ] || [ ! -f "$JAVA_HOME_17_X64/bin/javac" ] || [ ! -x "$JAVA_HOME_17_X64/bin/javac" ]; then
-              exit_on_error "jdk-17 binary not found at path '$JAVA_HOME_17_X64/bin/javac' or is not executable."
-          fi
 
           echo "Setting vars"
 
@@ -34,8 +38,11 @@ jobs:
           fi
 
           # Set RELEASE_VERSION_NAME to "<CURRENT_VERSION_NAME>+<last_commit_hash>"
-          CURRENT_VERSION_NAME_REGEX='\s+versionName "([^"]+)"$'
-          CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
+          CURRENT_VERSION_NAME_REGEX='^\s*versionName = "([^"]+)"$'
+          CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle.kts | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
+          if [ -z "$CURRENT_VERSION_NAME" ]; then
+              exit_on_error "Failed to read versionName from ./app/build.gradle.kts."
+          fi
           RELEASE_VERSION_NAME="v$CURRENT_VERSION_NAME+${GITHUB_SHA:0:7}" # The "+" is necessary so that versioning precedence is not affected
           if ! printf "%s" "${RELEASE_VERSION_NAME/v/}" | grep -qP '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'; then
             exit_on_error "The release version '${RELEASE_VERSION_NAME/v/}' generated from current version '$CURRENT_VERSION_NAME' is not a valid version as per semantic version '2.0.0' spec in the format 'major.minor.patch(-prerelease)(+buildmetadata)'. https://semver.org/spec/v2.0.0.html."
@@ -51,18 +58,18 @@ jobs:
           echo "APK_BASENAME_PREFIX=$APK_BASENAME_PREFIX" >> $GITHUB_ENV
 
           echo "Building APK file for '$RELEASE_VERSION_NAME' release with '$APK_VERSION_TAG' tag"
-          export TERMUX_STYLING_APP_BUILD__APP_VERSION_NAME="${RELEASE_VERSION_NAME/v/}" # Used by app/build.gradle
-          export TERMUX_STYLING_APP_BUILD__APK_VERSION_TAG="$APK_VERSION_TAG" # Used by app/build.gradle
-          export GRADLE_OPTS="-Dorg.gradle.java.home=$JAVA_HOME_17_X64"
-          if ! ./gradlew assembleDebug; then
-            exit_on_error "Build failed for '$RELEASE_VERSION_NAME' release with '$APK_VERSION_TAG' tag."
+          export TERMUX_STYLING_APP_BUILD__APP_VERSION_NAME="${RELEASE_VERSION_NAME/v/}" # Used by app/build.gradle.kts
+          if ! ./gradlew testDebugUnitTest lintDebug assembleDebug; then
+            exit_on_error "Build/test/lint failed for '$RELEASE_VERSION_NAME' release with '$APK_VERSION_TAG' tag."
           fi
 
           echo "Validating APK file"
-          if ! test -f "$APK_DIR_PATH/${APK_BASENAME_PREFIX}.apk"; then
+          GENERIC_APK="$APK_DIR_PATH/app-debug.apk"
+          if ! test -f "$GENERIC_APK"; then
             files_found="$(ls "$APK_DIR_PATH")"
-            exit_on_error "Failed to find built APK file at '$APK_DIR_PATH/${APK_BASENAME_PREFIX}.apk'. Files found: "$'\n'"$files_found"
+            exit_on_error "Failed to find built APK file at '$GENERIC_APK'. Files found: "$'\n'"$files_found"
           fi
+          mv "$GENERIC_APK" "$APK_DIR_PATH/${APK_BASENAME_PREFIX}.apk"
 
           echo "Generating checksums-sha256.txt file"
           if ! (cd "$APK_DIR_PATH"; sha256sum "${APK_BASENAME_PREFIX}.apk" > checksums-sha256.txt); then

@@ -1,7 +1,9 @@
-<resources xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <style name="AppTheme" parent="@android:style/Theme.Material.Light.Dialog.NoActionBar.MinWidth">
-        <item name="android:colorAccent">#212121</item>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TermuxNeon" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/neon_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
-
 </resources>
