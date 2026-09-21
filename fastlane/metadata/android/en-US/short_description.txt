@@ -1,0 +1,1 @@
+Customize Termux's terminal color scheme and font, with live preview.

@@ -1,0 +1,27 @@
+Termux Neon is a Termux add-on that lets you customize your terminal's color
+scheme and font, with a live preview and one-tap apply that hot-reloads the
+running Termux session — no restart needed.
+
+It's a from-scratch Compose UI rewrite of Termux's official termux-styling
+add-on, keeping the exact same plugin contract, so it installs and runs
+exactly where the upstream add-on did.
+
+Features:
+
+* 15 curated color schemes: Catppuccin Mocha/Latte, Cyberpunk, Gotham,
+  Solarized Dark/Light, Dracula, Nord, Gruvbox Dark, Tokyo Night, Rosé Pine,
+  Monokai, One Dark, Ayu Dark, and Kanagawa.
+* A large bundled monospace font collection, including popular Nerd
+  Fonts-patched fonts and D2 Coding.
+* Live preview of the selected scheme/font before applying anything.
+* Favorites — star schemes and fonts, which then sort to the top.
+* Search/filter across both schemes and fonts.
+* Shuffle — randomly preview a scheme/font combination.
+* Custom text color — an independent foreground-color override, picked from
+  10 curated swatches.
+* Apply All — one action applies the selected scheme, font, and text color
+  together, then hot-reloads the live Termux session.
+
+This app requires Termux itself to be installed, and must be installed from
+the same source as Termux (matching signing key) for the shared plugin
+permissions to work correctly.
