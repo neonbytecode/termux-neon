@@ -1,5 +1,6 @@
 package com.termux.styling
 
+import android.graphics.Typeface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,17 +25,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import dev.neonbytecode.neon.designsystem.FavoriteStar
 import dev.neonbytecode.neon.designsystem.GlowText
 import dev.neonbytecode.neon.designsystem.GridBackdrop
 import dev.neonbytecode.neon.designsystem.NeonButton
@@ -45,6 +50,7 @@ import dev.neonbytecode.neon.designsystem.NeonMagenta
 import dev.neonbytecode.neon.designsystem.NeonRed
 import dev.neonbytecode.neon.designsystem.NeonBg
 import dev.neonbytecode.neon.designsystem.NeonBgAlt
+import dev.neonbytecode.neon.designsystem.NeonSearchField
 import dev.neonbytecode.neon.designsystem.NeonTextSecondary
 import dev.neonbytecode.neon.designsystem.ScanlineOverlay
 import dev.neonbytecode.neon.designsystem.SectionLabel
@@ -77,6 +83,10 @@ fun NeonScreen(viewModel: MainViewModel) {
         onSelectFont = viewModel::selectFont,
         onApplyScheme = viewModel::applyScheme,
         onApplyFont = viewModel::applyFont,
+        onQueryChange = viewModel::setQuery,
+        onToggleFavoriteScheme = viewModel::toggleFavoriteScheme,
+        onToggleFavoriteFont = viewModel::toggleFavoriteFont,
+        onShuffle = viewModel::shuffle,
     )
 }
 
@@ -87,6 +97,10 @@ fun NeonStylingScreen(
     onSelectFont: (Selectable) -> Unit,
     onApplyScheme: () -> Unit,
     onApplyFont: () -> Unit,
+    onQueryChange: (String) -> Unit = {},
+    onToggleFavoriteScheme: (String) -> Unit = {},
+    onToggleFavoriteFont: (String) -> Unit = {},
+    onShuffle: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -112,12 +126,14 @@ fun NeonStylingScreen(
                 fontName = ui.previewFontName,
                 font = ui.previewFont,
             )
+            Spacer(modifier = Modifier.height(18.dp))
+            FilterBar(query = ui.query, onQueryChange = onQueryChange, onShuffle = onShuffle)
             Spacer(modifier = Modifier.height(22.dp))
             SectionLabel("COLOR SCHEMES")
-            SchemeRow(ui, onSelectScheme)
+            SchemeRow(ui, onSelectScheme, onToggleFavoriteScheme)
             Spacer(modifier = Modifier.height(18.dp))
             SectionLabel("FONTS")
-            FontRow(ui, onSelectFont)
+            FontRow(ui, onSelectFont, onToggleFavoriteFont)
             Spacer(modifier = Modifier.height(22.dp))
             ApplyDock(ui, onApplyScheme, onApplyFont)
             Spacer(modifier = Modifier.height(24.dp))
@@ -149,34 +165,81 @@ private fun NeonHeader(termuxReady: Boolean) {
 }
 
 @Composable
-private fun SchemeRow(ui: UiState, onSelect: (Selectable) -> Unit) {
+private fun FilterBar(query: String, onQueryChange: (String) -> Unit, onShuffle: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        NeonSearchField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = "filter schemes & fonts",
+            modifier = Modifier.weight(1f),
+        )
+        NeonButton(
+            text = "⟲",
+            onClick = onShuffle,
+            accent = NeonMagenta,
+        )
+    }
+}
+
+/** Default first, then favorites, then the rest — each group keeping catalog order. */
+private fun <T> sortFavoritesFirst(entries: List<T>, isDefault: (T) -> Boolean, isFavorite: (T) -> Boolean): List<T> {
+    val (defaults, rest) = entries.partition(isDefault)
+    val (favorites, others) = rest.partition(isFavorite)
+    return defaults + favorites + others
+}
+
+private fun matchesQuery(displayName: String, query: String): Boolean =
+    query.isBlank() || displayName.contains(query, ignoreCase = true)
+
+@Composable
+private fun SchemeRow(ui: UiState, onSelect: (Selectable) -> Unit, onToggleFavorite: (String) -> Unit) {
+    val filtered = ui.schemes.filter { matchesQuery(it.selectable.displayName, ui.query) }
+    val sorted = sortFavoritesFirst(
+        filtered,
+        isDefault = { it.selectable.name == Selectable.DEFAULT_FILENAME },
+        isFavorite = { it.selectable.name in ui.favoriteSchemes },
+    )
     LazyRow(
         contentPadding = PaddingValues(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(ui.schemes, key = { it.selectable.name }) { entry ->
+        items(sorted, key = { it.selectable.name }) { entry ->
             SchemeChip(
                 entry = entry,
                 selected = ui.selectedScheme == entry.selectable,
                 applied = ui.appliedScheme == entry.selectable,
+                favorite = entry.selectable.name in ui.favoriteSchemes,
                 onClick = { onSelect(entry.selectable) },
+                onToggleFavorite = { onToggleFavorite(entry.selectable.name) },
             )
         }
     }
 }
 
 @Composable
-private fun FontRow(ui: UiState, onSelect: (Selectable) -> Unit) {
+private fun FontRow(ui: UiState, onSelect: (Selectable) -> Unit, onToggleFavorite: (String) -> Unit) {
+    val filtered = ui.fonts.filter { matchesQuery(it.selectable.displayName, ui.query) }
+    val sorted = sortFavoritesFirst(
+        filtered,
+        isDefault = { it.selectable.name == Selectable.DEFAULT_FILENAME },
+        isFavorite = { it.selectable.name in ui.favoriteFonts },
+    )
     LazyRow(
         contentPadding = PaddingValues(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(ui.fonts, key = { it.selectable.name }) { entry ->
+        items(sorted, key = { it.selectable.name }) { entry ->
             FontChip(
                 entry = entry,
                 selected = ui.selectedFont == entry.selectable,
                 applied = ui.appliedFont == entry.selectable,
+                favorite = entry.selectable.name in ui.favoriteFonts,
                 onClick = { onSelect(entry.selectable) },
+                onToggleFavorite = { onToggleFavorite(entry.selectable.name) },
             )
         }
     }
@@ -187,7 +250,9 @@ private fun SchemeChip(
     entry: SchemeEntry,
     selected: Boolean,
     applied: Boolean,
+    favorite: Boolean,
     onClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
 ) {
     NeonCard(
         modifier = Modifier.width(112.dp).height(92.dp),
@@ -200,6 +265,7 @@ private fun SchemeChip(
                 selected -> append(", previewing")
                 applied -> append(", applied")
             }
+            if (favorite) append(", favorite")
         },
     ) {
         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -209,6 +275,8 @@ private fun SchemeChip(
                 ColorDot(entry.palette.foreground)
                 Spacer(modifier = Modifier.width(4.dp))
                 ColorDot(entry.palette.cursor)
+                Spacer(modifier = Modifier.weight(1f))
+                FavoriteStar(favorite = favorite, onToggle = onToggleFavorite)
             }
             Text(
                 text = entry.selectable.displayName,
@@ -238,13 +306,30 @@ private fun SchemeChip(
     }
 }
 
+/** Loads (and memoizes) the real typeface for a bundled font so chips preview it live. */
+@Composable
+private fun rememberChipFontFamily(assetName: String): FontFamily {
+    val assets = LocalContext.current.assets
+    return remember(assetName) {
+        if (assetName == Selectable.DEFAULT_FILENAME) {
+            FontFamily.Monospace
+        } else {
+            runCatching { FontFamily(Typeface.createFromAsset(assets, "fonts/$assetName")) }
+                .getOrDefault(FontFamily.Monospace)
+        }
+    }
+}
+
 @Composable
 private fun FontChip(
     entry: FontEntry,
     selected: Boolean,
     applied: Boolean,
+    favorite: Boolean,
     onClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
 ) {
+    val chipFont = rememberChipFontFamily(entry.selectable.name)
     NeonCard(
         modifier = Modifier.width(116.dp).height(92.dp),
         selected = selected,
@@ -256,15 +341,24 @@ private fun FontChip(
                 selected -> append(", previewing")
                 applied -> append(", applied")
             }
+            if (favorite) append(", favorite")
         },
     ) {
         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            GlowText(
-                text = "Aa",
-                color = NeonMagenta,
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp, letterSpacing = 2.sp),
-                glowAlpha = 0.35f,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GlowText(
+                    text = "Aa",
+                    color = NeonMagenta,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 22.sp,
+                        letterSpacing = 2.sp,
+                        fontFamily = chipFont,
+                    ),
+                    glowAlpha = 0.35f,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                FavoriteStar(favorite = favorite, onToggle = onToggleFavorite)
+            }
             Text(
                 text = entry.selectable.displayName,
                 style = MaterialTheme.typography.bodySmall,

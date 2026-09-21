@@ -28,6 +28,7 @@ class AppAssetsIntegrityTest {
     fun everyBundledSchemeSurvivesDedupeAndParses() {
         val files = schemeFiles()
         assertTrue("no scheme assets found", files.isNotEmpty())
+        assertEquals("curated scheme set must stay at exactly 15", 15, files.size)
 
         val selectables = files.map { Selectable(it.nameWithoutExtension) }
         assertEquals("duplicate selectable flavors after dedupe", files.size, selectables.distinct().size)

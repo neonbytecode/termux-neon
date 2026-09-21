@@ -50,6 +50,9 @@ data class UiState(
     val previewFontName: String = "monospace",
     val busy: Boolean = false,
     val message: StatusNote? = null,
+    val query: String = "",
+    val favoriteSchemes: Set<String> = emptySet(),
+    val favoriteFonts: Set<String> = emptySet(),
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -58,6 +61,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val catalog = BundledStyleCatalog(application.assets)
     private val reader = AppliedStyleReader(catalog)
     private val writer = TermuxStyleWriter(application, catalog)
+    private val favorites = FavoritesStore(application)
     private var environment: TermuxEnvironment.State = TermuxEnvironment.State.NONE
 
     private val _ui = MutableStateFlow(UiState())
@@ -88,6 +92,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     fonts = fonts,
                     appliedScheme = applied.schemeName?.let { s -> Selectable(s) },
                     appliedFont = applied.fontName?.let { s -> Selectable(s) },
+                    favoriteSchemes = favorites.schemes(),
+                    favoriteFonts = favorites.fonts(),
                 )
             }
             rebuildPreview()
@@ -101,6 +107,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectFont(item: Selectable?) {
         _ui.update { it.copy(selectedFont = item) }
+        rebuildPreview()
+    }
+
+    fun setQuery(text: String) {
+        _ui.update { it.copy(query = text) }
+    }
+
+    fun toggleFavoriteScheme(name: String) {
+        _ui.update { it.copy(favoriteSchemes = favorites.toggleScheme(name)) }
+    }
+
+    fun toggleFavoriteFont(name: String) {
+        _ui.update { it.copy(favoriteFonts = favorites.toggleFont(name)) }
+    }
+
+    /** Previews a random scheme + font combo; still requires APPLY to commit. */
+    fun shuffle() {
+        val current = _ui.value
+        val scheme = current.schemes.map { it.selectable }.filter { it.name != Selectable.DEFAULT_FILENAME }.randomOrNull()
+        val font = current.fonts.map { it.selectable }.filter { it.name != Selectable.DEFAULT_FILENAME }.randomOrNull()
+        _ui.update { it.copy(selectedScheme = scheme ?: it.selectedScheme, selectedFont = font ?: it.selectedFont) }
         rebuildPreview()
     }
 
