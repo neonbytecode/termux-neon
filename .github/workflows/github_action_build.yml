@@ -80,6 +80,31 @@ jobs:
           fi
           echo "checksums-sha256.txt:"$'\n```\n'"$(cat "$APK_DIR_PATH/checksums-sha256.txt")"$'\n```'
 
+      - name: Inspect APK manifest and signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="$APK_DIR_PATH/${APK_BASENAME_PREFIX}.apk"
+          APPLICATION_ID="$(apkanalyzer manifest application-id "$APK")"
+          test "$APPLICATION_ID" = "com.termux.styling"
+
+          if apkanalyzer manifest permissions "$APK" | grep -q .; then
+            echo "Unexpected runtime permissions found in $APK" >&2
+            apkanalyzer manifest permissions "$APK"
+            exit 1
+          fi
+
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose "$APK"
+
+          RELEASE_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "$RELEASE_APK"
+          if "$APKSIGNER" verify "$RELEASE_APK" 2>/dev/null; then
+            echo "Unsigned release APK unexpectedly verifies as signed." >&2
+            exit 1
+          fi
+
       - name: Upload files to action
         uses: actions/upload-artifact@v4
         with:
@@ -88,3 +113,4 @@ jobs:
             ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}.apk
             ${{ env.APK_DIR_PATH }}/checksums-sha256.txt
             ${{ env.APK_DIR_PATH }}/output-metadata.json
+            app/build/outputs/apk/release/app-release-unsigned.apk
