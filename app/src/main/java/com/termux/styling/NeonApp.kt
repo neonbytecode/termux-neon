@@ -1,7 +1,12 @@
 package com.termux.styling
 
 import android.graphics.Typeface
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,7 +36,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,7 +60,9 @@ import dev.neonbytecode.neon.designsystem.NeonMagenta
 import dev.neonbytecode.neon.designsystem.NeonRed
 import dev.neonbytecode.neon.designsystem.NeonBg
 import dev.neonbytecode.neon.designsystem.NeonBgAlt
+import dev.neonbytecode.neon.designsystem.NeonAmber
 import dev.neonbytecode.neon.designsystem.NeonSearchField
+import dev.neonbytecode.neon.designsystem.NeonSurfaceHigh
 import dev.neonbytecode.neon.designsystem.NeonTextSecondary
 import dev.neonbytecode.neon.designsystem.ScanlineOverlay
 import dev.neonbytecode.neon.designsystem.SectionLabel
@@ -60,7 +72,7 @@ import dev.neonbytecode.neon.termux.Selectable
 import kotlinx.coroutines.delay
 
 @Composable
-fun NeonScreen(viewModel: MainViewModel) {
+fun NeonScreen(viewModel: MainViewModel, onBack: () -> Unit = {}) {
     val ui by viewModel.ui.collectAsStateWithLifecycle()
 
     LaunchedEffect(ui.message) {
@@ -77,6 +89,11 @@ fun NeonScreen(viewModel: MainViewModel) {
         onPauseOrDispose { }
     }
 
+    // Gesture/hardware back always deliberately returns to Termux rather than
+    // relying on the default back-stack pop, which can land elsewhere
+    // depending on how this activity was launched.
+    BackHandler(onBack = onBack)
+
     NeonStylingScreen(
         ui = ui,
         onSelectScheme = viewModel::selectScheme,
@@ -87,6 +104,10 @@ fun NeonScreen(viewModel: MainViewModel) {
         onToggleFavoriteScheme = viewModel::toggleFavoriteScheme,
         onToggleFavoriteFont = viewModel::toggleFavoriteFont,
         onShuffle = viewModel::shuffle,
+        onBack = onBack,
+        onTextColorSelect = viewModel::selectTextColor,
+        onApplyTextColor = viewModel::applyTextColor,
+        onResetTextColor = viewModel::resetTextColor,
     )
 }
 
@@ -101,6 +122,10 @@ fun NeonStylingScreen(
     onToggleFavoriteScheme: (String) -> Unit = {},
     onToggleFavoriteFont: (String) -> Unit = {},
     onShuffle: () -> Unit = {},
+    onBack: () -> Unit = {},
+    onTextColorSelect: (Int) -> Unit = {},
+    onApplyTextColor: () -> Unit = {},
+    onResetTextColor: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -118,7 +143,7 @@ fun NeonStylingScreen(
                 .padding(horizontal = 20.dp),
         ) {
             Spacer(modifier = Modifier.height(10.dp))
-            NeonHeader(termuxReady = ui.termuxReady)
+            NeonHeader(termuxReady = ui.termuxReady, onBack = onBack)
             Spacer(modifier = Modifier.height(18.dp))
             TerminalPreview(
                 palette = ui.previewPalette,
@@ -131,36 +156,61 @@ fun NeonStylingScreen(
             Spacer(modifier = Modifier.height(22.dp))
             SectionLabel("COLOR SCHEMES")
             SchemeRow(ui, onSelectScheme, onToggleFavoriteScheme)
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(22.dp))
             SectionLabel("FONTS")
             FontRow(ui, onSelectFont, onToggleFavoriteFont)
             Spacer(modifier = Modifier.height(22.dp))
-            ApplyDock(ui, onApplyScheme, onApplyFont)
-            Spacer(modifier = Modifier.height(24.dp))
+            SectionLabel("TEXT COLOR")
+            TextColorSection(ui, onTextColorSelect)
+            // Trailing clearance so the floating apply dock never covers content.
+            Spacer(modifier = Modifier.height(230.dp))
         }
+
+        FloatingApplyDock(
+            ui = ui,
+            onApplyScheme = onApplyScheme,
+            onApplyFont = onApplyFont,
+            onApplyTextColor = onApplyTextColor,
+            onResetTextColor = onResetTextColor,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 
 @Composable
-private fun NeonHeader(termuxReady: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
-            Text(
-                text = "TERMUX // STYLE CONTROL",
-                style = MaterialTheme.typography.labelMedium,
-                letterSpacing = 3.sp,
-                color = NeonTextSecondary,
-            )
-            GlowText(text = "NEON", color = NeonCyan, style = MaterialTheme.typography.displayMedium)
-        }
-        StatusPill(
-            text = if (termuxReady) "TERMUX LINKED" else "TERMUX OFFLINE",
-            tone = if (termuxReady) NeonGreen else NeonRed,
+private fun NeonHeader(termuxReady: Boolean, onBack: () -> Unit) {
+    Column {
+        Text(
+            text = "‹ BACK TO TERMUX",
+            style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 1.5.sp,
+            color = NeonTextSecondary,
+            modifier = Modifier
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { onBack() }
+                .padding(vertical = 6.dp),
         )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column {
+                Text(
+                    text = "TERMUX // STYLE CONTROL",
+                    style = MaterialTheme.typography.labelMedium,
+                    letterSpacing = 3.sp,
+                    color = NeonTextSecondary,
+                )
+                GlowText(text = "NEON", color = NeonCyan, style = MaterialTheme.typography.displayMedium)
+            }
+            StatusPill(
+                text = if (termuxReady) "TERMUX LINKED" else "TERMUX OFFLINE",
+                tone = if (termuxReady) NeonGreen else NeonRed,
+            )
+        }
     }
 }
 
@@ -387,6 +437,68 @@ private fun FontChip(
     }
 }
 
+/** Shared inner padding for full-width content cards (matches TerminalPreview's hero card). */
+private val CardPadding = 16.dp
+
+/** Ten curated, vivid, readable-on-dark-background terminal text colors. */
+private val TEXT_COLOR_SWATCHES: List<Int> = listOf(
+    0xFFFFFFFF.toInt(), // White
+    0xFFE5E5E5.toInt(), // Off-white
+    0xFF8BE9FD.toInt(), // Cyan
+    0xFF50FA7B.toInt(), // Green
+    0xFFFFB000.toInt(), // Amber
+    0xFFFF79C6.toInt(), // Pink
+    0xFF7AA2F7.toInt(), // Light blue
+    0xFFC4A7E7.toInt(), // Lavender
+    0xFF95E6CB.toInt(), // Mint
+    0xFFFF9E64.toInt(), // Coral
+)
+
+@Composable
+private fun TextColorSection(
+    ui: UiState,
+    onSelect: (Int) -> Unit,
+) {
+    val selected = ui.textColorOverride
+    NeonCard(selected = selected != null, accent = selected?.let { Color(it) } ?: NeonAmber) {
+        Column(modifier = Modifier.padding(CardPadding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // All 10 shown at once (two rows of 5) rather than a scrollable
+            // row — with a fixed, small set of swatches, a hidden scroll
+            // just hides colors nobody knows to look for.
+            TEXT_COLOR_SWATCHES.chunked(5).forEach { row ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    row.forEach { argb ->
+                        ColorSwatch(argb = argb, selected = selected == argb, onClick = { onSelect(argb) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorSwatch(argb: Int, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(Color(argb))
+            .border(
+                width = if (selected) 3.dp else 1.dp,
+                color = if (selected) NeonCyan else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                shape = CircleShape,
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { onClick() }
+            .semantics {
+                role = Role.Button
+                contentDescription = "#%06X".format(argb and 0xFFFFFF)
+            },
+    )
+}
+
 @Composable
 private fun ColorDot(color: Int) {
     Box(
@@ -397,30 +509,52 @@ private fun ColorDot(color: Int) {
     )
 }
 
+/**
+ * Pinned to the bottom of the screen (not the scroll content) so the primary
+ * actions are always one tap away, regardless of how far the schemes/fonts
+ * rows have been scrolled — no more hunting for an Apply button at the
+ * bottom of a long page.
+ */
 @Composable
-private fun ApplyDock(
+private fun FloatingApplyDock(
     ui: UiState,
     onApplyScheme: () -> Unit,
     onApplyFont: () -> Unit,
+    onApplyTextColor: () -> Unit,
+    onResetTextColor: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(NeonSurfaceHigh)
+            .border(
+                BorderStroke(1.dp, (if (ui.termuxReady) NeonCyan else NeonRed).copy(alpha = 0.35f)),
+                shape = RectangleShape,
+            )
+            .safeDrawingPadding()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         if (!ui.termuxReady) {
-            NeonCard(selected = false, accent = NeonRed) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "TERMUX NOT FOUND",
-                        style = MaterialTheme.typography.labelMedium,
-                        letterSpacing = 2.sp,
-                        color = NeonRed,
-                    )
-                    Text(
-                        text = "Install Termux and reinstall this add-on with the matching signature to apply styles.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "TERMUX NOT FOUND",
+                    style = MaterialTheme.typography.labelMedium,
+                    letterSpacing = 2.sp,
+                    color = NeonRed,
+                )
+                Text(
+                    text = "Install Termux and reinstall this add-on with the matching signature to apply styles.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             return
+        }
+
+        if (ui.message != null) {
+            StatusMessage(ui.message!!)
         }
 
         Row(
@@ -445,8 +579,24 @@ private fun ApplyDock(
             )
         }
 
-        if (ui.message != null) {
-            StatusMessage(ui.message!!)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            NeonButton(
+                text = "APPLY TEXT COLOR",
+                onClick = onApplyTextColor,
+                modifier = Modifier.weight(1f),
+                enabled = ui.textColorOverride != null && !ui.busy,
+                accent = NeonGreen,
+            )
+            NeonButton(
+                text = "RESET",
+                onClick = onResetTextColor,
+                enabled = ui.textColorOverride != null && !ui.busy,
+                accent = NeonRed,
+                filled = false,
+            )
         }
     }
 }

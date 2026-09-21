@@ -53,6 +53,8 @@ data class UiState(
     val query: String = "",
     val favoriteSchemes: Set<String> = emptySet(),
     val favoriteFonts: Set<String> = emptySet(),
+    /** Null means no override picked yet — the preview shows whatever scheme/applied foreground is active. */
+    val textColorOverride: Int? = null,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -143,6 +145,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _ui.update { it.copy(message = null) }
     }
 
+    fun selectTextColor(argb: Int) {
+        _ui.update { it.copy(textColorOverride = argb) }
+        rebuildPreview()
+    }
+
+    /** Drops the picker override so the preview reflects whatever is actually applied again. */
+    fun resetTextColor() {
+        _ui.update { it.copy(textColorOverride = null) }
+        rebuildPreview()
+    }
+
+    fun applyTextColor() {
+        val state = environment
+        if (!state.accessible) {
+            _ui.update {
+                it.copy(message = StatusNote.Error("Termux is not installed or not signed with the matching key."))
+            }
+            return
+        }
+        val argb = _ui.value.textColorOverride ?: return
+        val hex = String.format("#%06X", argb and 0xFFFFFF)
+        _ui.update { it.copy(busy = true, message = null) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = writer.applyForegroundColor(state, hex)
+            val applied = reader.read(state)
+            _ui.update {
+                it.copy(
+                    busy = false,
+                    appliedScheme = applied.schemeName?.let { s -> Selectable(s) },
+                    appliedFont = applied.fontName?.let { s -> Selectable(s) },
+                    message = result.fold(
+                        onSuccess = { StatusNote.Success("Text color applied → $hex") },
+                        onFailure = { e -> StatusNote.Error("Failed to install: ${e.message ?: e::class.simpleName}") },
+                    ),
+                )
+            }
+            rebuildPreview()
+        }
+    }
+
     private fun apply(colors: Boolean, bundle: String) {
         val state = environment
         if (!state.accessible) {
@@ -183,7 +225,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val schemeKey = current.selectedScheme ?: current.appliedScheme
             val fontKey = current.selectedFont ?: current.appliedFont
 
-            val palette: AnsiPalette
+            var palette: AnsiPalette
             val schemeLabel: String
             if (schemeKey != null) {
                 palette = current.schemes.firstOrNull { it.selectable == schemeKey }?.palette
@@ -192,6 +234,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 palette = reader.installedPalette(environment) ?: AnsiPalette.DEFAULT
                 schemeLabel = "default"
+            }
+            current.textColorOverride?.let { override ->
+                palette = palette.copy(foreground = override)
             }
 
             val font: FontFamily

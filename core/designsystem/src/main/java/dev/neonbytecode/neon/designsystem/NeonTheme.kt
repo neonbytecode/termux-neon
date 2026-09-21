@@ -1,11 +1,9 @@
 package dev.neonbytecode.neon.designsystem
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -65,23 +63,6 @@ private val NeonDarkColorScheme = darkColorScheme(
     inverseOnSurface = Color(0xFF14141F),
 )
 
-private val NeonDayColorScheme = lightColorScheme(
-    primary = Color(0xFF006F7A),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFB4ECF5),
-    onPrimaryContainer = Color(0xFF002F34),
-    secondary = Color(0xFF8E1168),
-    onSecondary = Color(0xFFFFFFFF),
-    background = Color(0xFFF7F8FC),
-    onBackground = Color(0xFF17171E),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF17171E),
-    surfaceVariant = Color(0xFFE9EAF1),
-    onSurfaceVariant = Color(0xFF45464E),
-    outline = Color(0xFF75767F),
-    error = Color(0xFFBA1A1A),
-)
-
 private val NeonTypography = Typography(
     displayLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, fontSize = 44.sp, lineHeight = 46.sp, letterSpacing = 3.sp),
     displayMedium = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Black, fontSize = 36.sp, lineHeight = 40.sp, letterSpacing = 4.sp),
@@ -105,14 +86,16 @@ private val NeonShapes = Shapes(
     extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
 )
 
-/** The Termux Neon design system root. */
+/**
+ * The Termux Neon design system root. Always dark — the whole visual
+ * identity (CRT scanlines, grid backdrop, neon glow) is built for it, and a
+ * terminal-styling tool has no coherent light-mode identity, so this
+ * deliberately ignores the system theme setting rather than following it.
+ */
 @Composable
-fun NeonTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
+fun NeonTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (darkTheme) NeonDarkColorScheme else NeonDayColorScheme,
+        colorScheme = NeonDarkColorScheme,
         typography = NeonTypography,
         shapes = NeonShapes,
         content = content,
