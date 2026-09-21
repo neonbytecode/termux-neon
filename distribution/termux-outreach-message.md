@@ -27,4 +27,15 @@ the Termux name in the project description? In particular, would you prefer
 this to supplement the existing Termux:Styling listing, replace it, or be
 handled another way?
 
+For reference, in case it's useful to look at directly rather than take my
+word for:
+
+- What changed and why: https://github.com/neonbytecode/termux-neon/blob/master/CHANGELOG.md
+- Bundled asset licensing (every font/scheme individually checked, one
+  dropped for not being FOSS-licensed):
+  https://github.com/neonbytecode/termux-neon/blob/master/THIRD_PARTY_LICENSES.md
+- How the reload-broadcast timing works, since it depends on the exact
+  receiver-registration lifecycle in termux-app:
+  https://neonbytecode.github.io/termux-neon/blog/shared-uid-hot-reload.html
+
 Thanks.
