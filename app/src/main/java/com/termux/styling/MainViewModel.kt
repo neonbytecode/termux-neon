@@ -38,6 +38,7 @@ data class FontEntry(
 
 data class UiState(
     val termuxReady: Boolean = false,
+    val termuxProblem: TermuxEnvironment.AccessProblem = TermuxEnvironment.AccessProblem.NONE,
     val schemes: List<SchemeEntry> = emptyList(),
     val fonts: List<FontEntry> = emptyList(),
     val selectedScheme: Selectable? = null,
@@ -90,6 +91,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _ui.update {
                 it.copy(
                     termuxReady = state.accessible,
+                    termuxProblem = state.problem,
                     schemes = schemes,
                     fonts = fonts,
                     appliedScheme = applied.schemeName?.let { s -> Selectable(s) },

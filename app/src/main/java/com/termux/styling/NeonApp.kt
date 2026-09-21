@@ -68,6 +68,7 @@ import dev.neonbytecode.neon.designsystem.SectionLabel
 import dev.neonbytecode.neon.designsystem.StatusPill
 import dev.neonbytecode.neon.designsystem.TerminalPreview
 import dev.neonbytecode.neon.termux.Selectable
+import dev.neonbytecode.neon.termux.TermuxEnvironment
 import kotlinx.coroutines.delay
 
 @Composable
@@ -540,7 +541,16 @@ private fun FloatingApplyDock(
                     color = NeonRed,
                 )
                 Text(
-                    text = "Install Termux and reinstall this add-on with the matching signature to apply styles.",
+                    text = when (ui.termuxProblem) {
+                        TermuxEnvironment.AccessProblem.NOT_INSTALLED ->
+                            "Install Termux before applying styles."
+                        TermuxEnvironment.AccessProblem.INCOMPATIBLE_SIGNATURE ->
+                            "Termux was detected, but this app is signed by a different source. Install both apps from the same distribution."
+                        TermuxEnvironment.AccessProblem.ACCESS_ERROR ->
+                            "Termux was detected, but its private environment is inaccessible. Reinstall both apps from the same distribution."
+                        TermuxEnvironment.AccessProblem.NONE ->
+                            "Install Termux and reinstall this add-on with the matching signature to apply styles."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

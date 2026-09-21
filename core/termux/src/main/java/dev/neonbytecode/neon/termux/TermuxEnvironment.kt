@@ -2,6 +2,7 @@ package dev.neonbytecode.neon.termux
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import java.io.File
 
 /**
@@ -31,13 +32,26 @@ object TermuxEnvironment {
     const val TERMUX_DIR_NAME = ".termux"
     const val DEFAULT_COLORS_MARKER = "# Using default color theme."
 
+    enum class AccessProblem {
+        NONE,
+        NOT_INSTALLED,
+        INCOMPATIBLE_SIGNATURE,
+        ACCESS_ERROR,
+    }
+
     data class State(
         val accessible: Boolean,
         val termuxContext: Context?,
         val termuxDir: File?,
+        val problem: AccessProblem = AccessProblem.NONE,
     ) {
         companion object {
-            val NONE = State(accessible = false, termuxContext = null, termuxDir = null)
+            val NONE = State(
+                accessible = false,
+                termuxContext = null,
+                termuxDir = null,
+                problem = AccessProblem.ACCESS_ERROR,
+            )
         }
     }
 
@@ -51,7 +65,11 @@ object TermuxEnvironment {
             val homeDir = File(termuxContext.filesDir, "home")
             val termuxDir = File(homeDir, TERMUX_DIR_NAME)
             State(accessible = true, termuxContext = termuxContext, termuxDir = termuxDir)
-        } catch (e: Exception) {
+        } catch (_: PackageManager.NameNotFoundException) {
+            State(false, null, null, AccessProblem.NOT_INSTALLED)
+        } catch (_: SecurityException) {
+            State(false, null, null, AccessProblem.INCOMPATIBLE_SIGNATURE)
+        } catch (_: Exception) {
             State.NONE
         }
     }
