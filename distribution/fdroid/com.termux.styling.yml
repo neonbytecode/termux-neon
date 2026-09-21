@@ -1,0 +1,55 @@
+# Working draft of the F-Droid build recipe for Termux Neon.
+#
+# This is NOT consumed by F-Droid from here — it's kept in-repo as a
+# reference so the actual submission (a merge request against
+# https://gitlab.com/fdroid/fdroiddata adding
+# metadata/com.termux.styling.yml) can be prepared and reviewed without
+# digging the format up from scratch each time.
+#
+# IMPORTANT: do not file the fdroiddata MR until:
+#   1. The Termux maintainer outreach (see distribution/termux-outreach-draft.md)
+#      has at least an initial response on the applicationId question —
+#      com.termux.styling is already registered on F-Droid as the original
+#      termux-styling app.
+#   2. THIRD_PARTY_LICENSES.md is fully clean (it is, as of the audit that
+#      dropped Monofur).
+#
+# Reference: https://f-droid.org/docs/Build_Metadata_Reference/
+
+Categories:
+  - System
+License: GPL-3.0-only
+AuthorName: neonbytecode
+SourceCode: https://github.com/neonbytecode/termux-neon
+IssueTracker: https://github.com/neonbytecode/termux-neon/issues
+Changelog: https://github.com/neonbytecode/termux-neon/blob/master/CHANGELOG.md
+
+AutoName: Termux Neon
+Description: |-
+  Termux Neon is a Termux add-on that lets you customize your terminal's
+  color scheme and font, with a live preview and one-tap apply that
+  hot-reloads the running Termux session.
+
+  It is a from-scratch Compose UI rewrite of Termux's official
+  termux-styling add-on, keeping the exact same plugin contract, so it
+  installs and runs exactly where the upstream add-on did. Requires Termux
+  itself to be installed from the same source (matching signing key).
+
+RepoType: git
+Repo: https://github.com/neonbytecode/termux-neon
+
+Builds:
+  - versionName: "1.0.0"
+    versionCode: 2000
+    commit: v1.0.0  # placeholder — set to the actual release tag once cut
+    subdir: app
+    gradle:
+      - yes
+    # F-Droid signs this build itself with its own reproducible-build key;
+    # this is what makes it match an F-Droid-installed Termux's shared UID,
+    # unlike the debug-key GitHub Releases APK.
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: "1.0.0"
+CurrentVersionCode: 2000
